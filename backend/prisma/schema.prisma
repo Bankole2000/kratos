@@ -1,0 +1,844 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Resource Type Registry
+//
+// One row per registered resource type (country, currency, vendor, ...).
+// `classification` decides which server serves it: SYNC types are pulled in
+// full/delta by consuming projects via the NestJS sync API and persisted
+// locally; LIVE types are queried on-demand via the Rust read API and are
+// never expected to be fully mirrored client-side.
+//
+// `version` is a monotonically increasing counter bumped whenever any item
+// belonging to this type is created/updated/deleted. Consuming projects pass
+// back the last version they saw to the sync API's delta endpoint.
+// ---------------------------------------------------------------------------
+
+enum ResourceClassification {
+  SYNC
+  LIVE
+}
+
+enum CurrencyKind {
+  FIAT
+  CRYPTO
+  IN_GAME
+}
+
+model ResourceType {
+  id             String                 @id @default(uuid())
+  key            String                 @unique // e.g. "country", "currency", "vendor"
+  displayName    String
+  classification ResourceClassification
+  version        Int                    @default(1)
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  @@map("resource_types")
+}
+
+// ---------------------------------------------------------------------------
+// Standard Seeded Reference Data (Phase 1)
+//
+// Each standard dataset gets its own typed table rather than a generic
+// key/value shape, since fields genuinely differ per type. All are
+// SYNC-classified: small, rarely change, safe to fully mirror client-side.
+//
+// `version` + `updatedAt` on each row support delta sync at the item level.
+// Deletes are hard deletes — the sync API's delta endpoint diffs full id
+// sets to detect removals rather than relying on a tombstone column.
+// ---------------------------------------------------------------------------
+
+model Country {
+  id          String   @id @default(uuid())
+  name        String
+  alpha2      String   @unique // ISO 3166-1 alpha-2, e.g. "US"
+  alpha3      String   @unique // ISO 3166-1 alpha-3, e.g. "USA"
+  callingCode String // e.g. "+1"
+  region      String
+  flagEmoji   String // Unicode regional-indicator flag, derived from alpha2, e.g. "🇺🇸"
+  flagSvg     Bytes? // raw SVG markup, fetched once at seed time (source: flagcdn.com) — offline-safe, no CDN dependency for consumers
+  metadata    Json?
+  version     Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  currencies CountryCurrency[]
+  languages  CountryLanguage[]
+  timezones  CountryTimezone[]
+  locations  Location[]
+  provinces  Province[]
+  cities     City[]
+
+  @@index([updatedAt])
+  @@map("countries")
+}
+
+// A Province is a country's first-level internal subdivision — the real-world
+// label varies (state, province, region, prefecture, canton, ...), so
+// `divisionType` is a free string rather than an enum: the vocabulary is
+// genuinely per-country and would need constant amendment otherwise. Small
+// countries with no internal subdivisions (Vatican City, Monaco) simply have
+// zero Province rows — absence is the signal, no special-case flag needed.
+model Province {
+  id           String   @id @default(uuid())
+  countryId    String
+  name         String
+  code         String? // e.g. "CA" for California, where a standard short code exists
+  divisionType String // "state", "province", "region", "prefecture", "canton", ...
+  metadata     Json?
+  version      Int      @default(1)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  country   Country    @relation(fields: [countryId], references: [id])
+  cities    City[]
+  locations Location[]
+
+  @@index([countryId])
+  @@index([updatedAt])
+  @@map("provinces")
+}
+
+// City carries both countryId and provinceId (rather than deriving country
+// through province) so a country-scoped city lookup never needs a join —
+// provinceId stays optional since not every country's provinces will be
+// seeded/curated before its cities are.
+model City {
+  id         String   @id @default(uuid())
+  countryId  String
+  provinceId String?
+  name       String
+  metadata   Json?
+  version    Int      @default(1)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  country   Country    @relation(fields: [countryId], references: [id])
+  province  Province?  @relation(fields: [provinceId], references: [id])
+  locations Location[]
+
+  @@index([countryId])
+  @@index([provinceId])
+  @@index([updatedAt])
+  @@map("cities")
+}
+
+model Currency {
+  id            String       @id @default(uuid())
+  code          String       @unique // ISO 4217 for fiat (e.g. "USD"); ticker/symbol-style for CRYPTO/IN_GAME (e.g. "BTC", "VBUCKS") — not length-constrained to 3 chars, since only fiat follows that standard
+  name          String
+  symbol        String
+  decimalDigits Int          @default(2)
+  kind          CurrencyKind @default(FIAT)
+  metadata      Json?
+  version       Int          @default(1)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  countries    CountryCurrency[]
+  ratesAsBase  ExchangeRate[]    @relation("ExchangeRateBase")
+  ratesAsQuote ExchangeRate[]    @relation("ExchangeRateQuote")
+
+  @@index([updatedAt])
+  @@index([kind])
+  @@map("currencies")
+}
+
+// Latest-only: one row per (base, quote) pair, overwritten on refresh/update
+// rather than accumulating history. Chosen for the initial build — a
+// consuming project asking "what's USD worth in EUR right now" is served;
+// "what was it on March 3rd" is not, since nothing here retains prior
+// values. `source` distinguishes provider-fetched rows ("exchangerate-api.com")
+// from admin-entered ones ("manual") so the admin UI can show provenance.
+// Either side of the pair can be any Currency kind (FIAT, CRYPTO, IN_GAME) —
+// nothing here restricts it, even though the current fetch job only
+// populates FIAT-to-FIAT pairs (see ExchangeRatesService).
+model ExchangeRate {
+  id              String   @id @default(uuid())
+  baseCurrencyId  String
+  quoteCurrencyId String
+  rate            Float
+  source          String // "manual" or a provider identifier, e.g. "exchangerate-api.com"
+  fetchedAt       DateTime // when this rate value was obtained — distinct from updatedAt, which tracks row edits generally
+  metadata        Json?
+  version         Int      @default(1)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  baseCurrency  Currency @relation("ExchangeRateBase", fields: [baseCurrencyId], references: [id])
+  quoteCurrency Currency @relation("ExchangeRateQuote", fields: [quoteCurrencyId], references: [id])
+
+  @@unique([baseCurrencyId, quoteCurrencyId])
+  @@index([updatedAt])
+  @@index([quoteCurrencyId])
+  @@map("exchange_rates")
+}
+
+// unitCategory is a free string (e.g. "mass", "volume", "length", "count"),
+// same pattern as Province.divisionType — the vocabulary is fixed-ish but
+// not worth a separate table. Conversion between two units only makes sense
+// within the same category: convert by going through the category's base
+// unit — valueInTarget = valueInSource * sourceFactor / targetFactor. The
+// base unit itself carries conversionFactor 1.0 and isBaseUnit true; nothing
+// at the DB level enforces exactly one base unit per category, same as
+// nothing enforces divisionType's vocabulary — an admin data-entry concern,
+// not a schema one.
+model Unit {
+  id               String   @id @default(uuid())
+  name             String
+  symbol           String
+  unitCategory     String // "mass", "volume", "length", "count", ...
+  isBaseUnit       Boolean  @default(false)
+  conversionFactor Float // multiply a quantity in this unit by this to get the equivalent in the category's base unit
+  metadata         Json?
+  version          Int      @default(1)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([updatedAt])
+  @@index([unitCategory])
+  @@map("units")
+}
+
+model Timezone {
+  id          String   @id @default(uuid())
+  identifier  String   @unique // IANA identifier, e.g. "America/New_York"
+  utcOffset   String // e.g. "-05:00" (standard offset; DST handled by the identifier itself)
+  displayName String
+  metadata    Json?
+  version     Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  countries CountryTimezone[]
+
+  @@index([updatedAt])
+  @@map("timezones")
+}
+
+model Language {
+  id         String   @id @default(uuid())
+  code       String   @unique // ISO 639-1, e.g. "en"
+  name       String
+  nativeName String
+  metadata   Json?
+  version    Int      @default(1)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  countries CountryLanguage[]
+
+  @@index([updatedAt])
+  @@map("languages")
+}
+
+// ---------------------------------------------------------------------------
+// Country <-> Currency/Language/Timezone associations
+//
+// Real many-to-many: a country can use multiple currencies (Panama: PAB,
+// USD), speak multiple languages, and span multiple timezones (Russia, USA);
+// conversely one currency/language/timezone is shared by many countries.
+// `isPrimary` marks the country's official/main one where the source data
+// distinguishes it (e.g. a country's official currency among several in use).
+// ---------------------------------------------------------------------------
+
+model CountryCurrency {
+  countryId  String
+  currencyId String
+  isPrimary  Boolean @default(false)
+
+  country  Country  @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  currency Currency @relation(fields: [currencyId], references: [id], onDelete: Cascade)
+
+  @@id([countryId, currencyId])
+  @@index([currencyId])
+  @@map("country_currencies")
+}
+
+model CountryLanguage {
+  countryId  String
+  languageId String
+  isPrimary  Boolean @default(false)
+
+  country  Country  @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  language Language @relation(fields: [languageId], references: [id], onDelete: Cascade)
+
+  @@id([countryId, languageId])
+  @@index([languageId])
+  @@map("country_languages")
+}
+
+model CountryTimezone {
+  countryId  String
+  timezoneId String
+  isPrimary  Boolean @default(false)
+
+  country  Country  @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  timezone Timezone @relation(fields: [timezoneId], references: [id], onDelete: Cascade)
+
+  @@id([countryId, timezoneId])
+  @@index([timezoneId])
+  @@map("country_timezones")
+}
+
+// ---------------------------------------------------------------------------
+// Org-Curated Resource Lists (Phase 1)
+//
+// Same CRUD/sync shape as standard datasets, but the content is org-owned
+// rather than sourced from an external standard. Classification is per-type
+// (see ResourceType) since a short category list is SYNC while a large,
+// growing vendor catalog may be LIVE — the Rust read server queries these
+// same tables directly via its own sqlx connection when LIVE.
+//
+// A single real-world organization (e.g. Amazon) can offer several distinct
+// vendor/platform lines (AWS, Prime, Twitch) that a consuming project deals
+// with separately — so Company is the parent org, Vendor is the specific
+// line a project actually references/categorizes. Both are optional-parent
+// relations (a Vendor need not belong to a Company) to keep simple cases simple.
+// ---------------------------------------------------------------------------
+
+model Company {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  metadata  Json?
+  version   Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  vendors   Vendor[]
+  locations Location[]
+  banks     Bank[]
+  tags      CompanyTag[]
+
+  @@index([updatedAt])
+  @@map("companies")
+}
+
+// A Bank is modeled separately from Company/Vendor rather than folded into
+// either — it carries fields no generic org has (SWIFT/BIC) and consuming
+// finance projects (Expense Tracker, Bookkeeping) look it up as its own
+// concept. companyId is optional, same pattern as Vendor, for cases where
+// the parent org is worth tracking (e.g. "JPMorgan Chase Bank, N.A." under
+// Company "JPMorgan Chase & Co."). A bank's presence in multiple countries
+// is modeled via Location (bankId), not a single countryId here — country-
+// specific codes (US routing number, UK sort code, ...) belong on that
+// branch's Location.metadata since the format varies too much per country
+// to be one typed column.
+model Bank {
+  id        String   @id @default(uuid())
+  name      String
+  companyId String?
+  swiftBic  String?
+  website   String?
+  metadata  Json?
+  version   Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company? @relation(fields: [companyId], references: [id])
+
+  locations Location[]
+  tags      BankTag[]
+
+  @@index([updatedAt])
+  @@index([companyId])
+  @@map("banks")
+}
+
+model Vendor {
+  id         String   @id @default(uuid())
+  name       String
+  companyId  String?
+  categoryId String?
+  industryId String?
+  metadata   Json?
+  version    Int      @default(1)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  company  Company?  @relation(fields: [companyId], references: [id])
+  category Category? @relation(fields: [categoryId], references: [id])
+  industry Industry? @relation(fields: [industryId], references: [id])
+
+  locations Location[]
+  tags      VendorTag[]
+
+  @@index([updatedAt])
+  @@index([companyId])
+  @@index([categoryId])
+  @@index([industryId])
+  @@map("vendors")
+}
+
+// CategoryGroup organizes Categories so a growing flat list (Office Supplies,
+// Cloud Services, Travel, Software, ...) doesn't become unmanageable in the
+// admin UI — e.g. group "Technology" containing "Cloud Infrastructure",
+// "Enterprise Software". This is your org's own free-form filing system,
+// distinct from Industry (see below), which classifies what a business does.
+
+model CategoryGroup {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  metadata  Json?
+  version   Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  categories Category[]
+
+  @@index([updatedAt])
+  @@map("category_groups")
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  name      String
+  groupId   String?
+  metadata  Json?
+  version   Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  group   CategoryGroup? @relation(fields: [groupId], references: [id])
+  vendors Vendor[]
+  tags    CategoryTag[]
+
+  @@index([updatedAt])
+  @@index([groupId])
+  @@map("categories")
+}
+
+// Industry classifies what business a Vendor line operates in (Cloud
+// Computing, E-commerce, Streaming Media) — standardized-style reference
+// data, distinct from Category, which is your org's own filing system.
+// A vendor can carry both: AWS -> Industry "Cloud Computing", Category
+// "Recurring Software" (or whatever your org files it under).
+
+model Industry {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  metadata  Json?
+  version   Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  vendors Vendor[]
+  tags    IndustryTag[]
+
+  @@index([updatedAt])
+  @@map("industries")
+}
+
+// A Location can belong to a Company (HQ/branch) and/or independently to a
+// specific Vendor line (e.g. a regional franchise or distinct warehouse that
+// doesn't share the parent company's address) — both FKs are optional and
+// independent of each other, not either/or.
+
+model Location {
+  id             String   @id @default(uuid())
+  companyId      String?
+  vendorId       String?
+  bankId         String?
+  isHeadquarters Boolean  @default(false)
+  addressLine1   String
+  addressLine2   String?
+  city           String // free-text fallback — kept alongside cityId since city data isn't exhaustively seeded/curated the way countries are
+  provinceId     String?
+  cityId         String?
+  postalCode     String?
+  countryId      String?
+  latitude       Float?
+  longitude      Float?
+  metadata       Json?
+  version        Int      @default(1)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  company  Company?      @relation(fields: [companyId], references: [id])
+  vendor   Vendor?       @relation(fields: [vendorId], references: [id])
+  bank     Bank?         @relation(fields: [bankId], references: [id])
+  country  Country?      @relation(fields: [countryId], references: [id])
+  province Province?     @relation(fields: [provinceId], references: [id])
+  cityRef  City?         @relation(fields: [cityId], references: [id])
+  tags     LocationTag[]
+
+  @@index([updatedAt])
+  @@index([companyId])
+  @@index([vendorId])
+  @@index([bankId])
+  @@index([countryId])
+  @@index([provinceId])
+  @@index([cityId])
+  @@map("locations")
+}
+
+// ---------------------------------------------------------------------------
+// Tags
+//
+// Canonical, reusable labels managed as a real entity (renaming a Tag
+// propagates everywhere it's used) rather than loose per-row strings. One
+// join table per taggable model — Prisma has no clean polymorphic join, and
+// a real FK per relation keeps referential integrity intact.
+// ---------------------------------------------------------------------------
+
+model Tag {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  vendors    VendorTag[]
+  companies  CompanyTag[]
+  locations  LocationTag[]
+  categories CategoryTag[]
+  industries IndustryTag[]
+  banks      BankTag[]
+
+  @@map("tags")
+}
+
+model VendorTag {
+  vendorId String
+  tagId    String
+
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([vendorId, tagId])
+  @@index([tagId])
+  @@map("vendor_tags")
+}
+
+model CompanyTag {
+  companyId String
+  tagId     String
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([companyId, tagId])
+  @@index([tagId])
+  @@map("company_tags")
+}
+
+model LocationTag {
+  locationId String
+  tagId      String
+
+  location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  tag      Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([locationId, tagId])
+  @@index([tagId])
+  @@map("location_tags")
+}
+
+model CategoryTag {
+  categoryId String
+  tagId      String
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  tag      Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([categoryId, tagId])
+  @@index([tagId])
+  @@map("category_tags")
+}
+
+model IndustryTag {
+  industryId String
+  tagId      String
+
+  industry Industry @relation(fields: [industryId], references: [id], onDelete: Cascade)
+  tag      Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([industryId, tagId])
+  @@index([tagId])
+  @@map("industry_tags")
+}
+
+model BankTag {
+  bankId String
+  tagId  String
+
+  bank Bank @relation(fields: [bankId], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([bankId, tagId])
+  @@index([tagId])
+  @@map("bank_tags")
+}
+
+// ---------------------------------------------------------------------------
+// Projects
+//
+// A platform registered with Core Platform (e.g. Portfolio Manager, or
+// Core Platform's own identity flows via the seeded "core-platform" row).
+// Owns its API keys and any project-specific notification template
+// overrides — see Messaging section below.
+// ---------------------------------------------------------------------------
+
+model Project {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  apiKeys   ApiKey[]
+  templates NotificationTemplate[]
+
+  @@map("projects")
+}
+
+// ---------------------------------------------------------------------------
+// API Key Access
+//
+// Identifies a *consuming project*, not a person — used for rate limiting
+// and revocation on the management server's admin + sync APIs. The Rust
+// read API is intentionally unauthenticated and never checks this table.
+// ---------------------------------------------------------------------------
+
+model ApiKey {
+  id              String    @id @default(uuid())
+  projectId       String
+  hashedKey       String    @unique
+  keyPrefix       String // first few chars of the plaintext key, shown in the admin UI for identification
+  rateLimitPerMin Int       @default(60)
+  revokedAt       DateTime?
+  lastUsedAt      DateTime?
+  createdAt       DateTime  @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("api_keys")
+}
+
+// ---------------------------------------------------------------------------
+// Identity & Auth (Core Platform)
+//
+// This is the ecosystem's single source of truth for end-user identity —
+// consuming projects (Portfolio Manager, ...) keep only a thin local shadow
+// User row (id/email/name, no password) for FK convenience and verify
+// access tokens locally via this server's public signing key rather than
+// calling back here on every request. See docs/core.md and
+// portfolio-manager/docs/core.md for the wider context.
+//
+// Distinct from ApiKey above: ApiKey identifies a *project*; User/
+// PersonalAccessToken identify a *person*.
+// ---------------------------------------------------------------------------
+
+enum OneTimeTokenType {
+  PASSWORD_RESET
+  EMAIL_VERIFICATION
+}
+
+model User {
+  id              String    @id @default(uuid())
+  email           String    @unique
+  password        String
+  name            String
+  active          Boolean   @default(true)
+  emailVerifiedAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  refreshTokens        RefreshToken[]
+  oneTimeTokens        OneTimeToken[]
+  personalAccessTokens PersonalAccessToken[]
+  auditLogs            AuditLog[]
+  notifications        Notification[]
+  pushTokens           PushToken[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique @default(uuid())
+  userId    String
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// code is plaintext, a short human-typeable 6-char uppercase hex string —
+// not a long random secret — matching the pattern already proven in
+// Portfolio Manager's original auth module for this same purpose.
+model OneTimeToken {
+  id        String           @id @default(uuid())
+  userId    String
+  type      OneTimeTokenType
+  code      String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+  @@map("one_time_tokens")
+}
+
+// A user-owned credential for CLI/script automation — distinct from ApiKey,
+// which identifies a consuming project rather than a person. Hashing scheme
+// mirrors ApiKey's (SHA-256 over high-entropy random bytes, not bcrypt —
+// see common/utils/api-key.ts for the rationale, replicated in
+// common/utils/pat.ts for this model).
+model PersonalAccessToken {
+  id          String    @id @default(uuid())
+  userId      String
+  name        String // user-facing label, e.g. "laptop CLI"
+  hashedToken String    @unique
+  tokenPrefix String
+  scopes      String[]  @default([])
+  revokedAt   DateTime?
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("personal_access_tokens")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String // "login", "logout", "password_reset", "pat_created", ...
+  metadata  Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([action])
+  @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Messaging (Core Platform)
+//
+// Shared, multi-channel notification delivery for every consuming project —
+// ported from Portfolio Manager's messaging scaffold (which was never wired
+// to anything real) and completed here, since Core Platform is meant to be
+// the shared infrastructure every future app builds on, not just the first
+// one that needed it. See docs/core.md.
+// ---------------------------------------------------------------------------
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  PUSH
+  IN_APP
+}
+
+enum NotificationProvider {
+  RESEND
+  FCM
+  IN_APP
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+enum PushPlatform {
+  FCM
+  APNS
+  WEB
+}
+
+// Delivery-audit record — survives user deletion (onDelete: SetNull),
+// same reasoning as AuditLog above: a record of what was sent shouldn't
+// disappear just because the account later did.
+model Notification {
+  id                String               @id @default(uuid())
+  userId            String?
+  provider          NotificationProvider
+  channel           NotificationChannel
+  to                String
+  subject           String?
+  title             String?
+  body              String?
+  actionUrl         String?
+  notificationType  String?
+  status            NotificationStatus   @default(PENDING)
+  providerMessageId String?
+  error             String?
+  readAt            DateTime?
+  metadata          Json?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@map("notifications")
+}
+
+// Per-channel template content (Handlebars source in `content`). Resolution
+// order: project-specific override first (if isActive), then the global
+// override (projectId null, if isActive), then the file-based default in
+// modules/messaging/templates.default.ts. A project-specific row is
+// meaningless without its project and cascades on project delete; a global
+// row (projectId null) is never affected by any project deletion.
+model NotificationTemplate {
+  id        String              @id @default(uuid())
+  projectId String?
+  key       String
+  channel   NotificationChannel
+  content   Json
+  isActive  Boolean             @default(true)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, key, channel])
+  @@index([key])
+  @@map("notification_templates")
+}
+
+// Device/browser push tokens — cascades on user delete (unlike Notification
+// above), since a token with no owning user is meaningless, same as
+// RefreshToken/OneTimeToken.
+model PushToken {
+  id        String       @id @default(uuid())
+  userId    String
+  token     String       @unique
+  platform  PushPlatform
+  deviceId  String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, platform])
+  @@map("push_tokens")
+}

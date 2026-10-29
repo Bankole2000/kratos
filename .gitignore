@@ -1,0 +1,24 @@
+# Repo-wide ignores. Each component (backend/, frontend/, read-server/) keeps
+# its own .gitignore for stack-specific build output.
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+
+# Dependencies (root tooling: husky + commitlint)
+node_modules/
+
+# Secrets — every component's .env stays local; commit .env.example only
+.env
+!.env.example
+
+# Claude Code per-user local settings
+**/.claude/settings.local.json
+
+# Build output (safety net — component .gitignores should cover these too)
+dist/
+coverage/
+
+# Template demo media — unused by the admin UI; kept on disk, not in history
+frontend/public/assets/video/**/*.mp4

@@ -1,0 +1,14 @@
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "Vue.volar",
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "explicit"
+  },
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "vue.inlayHints.missingProps": true,
+  "vue.inlayHints.optionsWrapper": false,
+  "files.associations": {
+    "*.vue": "vue"
+  }
+}
