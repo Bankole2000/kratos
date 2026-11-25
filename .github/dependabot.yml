@@ -1,11 +1,17 @@
-# Rename to dependabot.yml in M0 (TASK-010), once the workspaces exist.
-# One root Cargo workspace and one root pnpm workspace, so both use directory "/".
+# Weekly dependency update PRs. One root Cargo workspace and one root pnpm workspace,
+# so both use directory "/". Minor and patch updates are grouped into one PR per
+# ecosystem; major updates get their own PR. Every PR runs CI like any other.
 version: 2
 updates:
+  # Actions in .github/workflows are pinned to commit SHAs; Dependabot bumps the SHA and
+  # the version comment together.
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
 
   # Rust: apps/api, packages/types, apps/app/src-tauri and sdks/rust (Cargo workspace)
   - package-ecosystem: cargo
@@ -17,6 +23,7 @@ updates:
         update-types: [minor, patch]
 
   # JavaScript/TypeScript: apps/web, apps/app, packages/ui, packages/api-client-ts, sdks/ts
+  # (pnpm workspace root; Dependabot's npm ecosystem reads pnpm-lock.yaml)
   - package-ecosystem: npm
     directory: /
     schedule:
