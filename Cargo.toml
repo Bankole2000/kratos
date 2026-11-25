@@ -4,7 +4,7 @@
 #   sdks/rust (F11), apps/mcp (F20).
 [workspace]
 resolver = "3"
-members = ["apps/api", "packages/types"]
+members = ["apps/api", "apps/app/src-tauri", "packages/types"]
 
 # Shared by every member: inherit with `edition.workspace = true` etc.
 [workspace.package]
