@@ -14,12 +14,14 @@ Use this app's row in the README [Commands](../../README.md#commands) table. Run
 ## Layout
 - `src/main.rs` starts the server: loads `.env`, reads `Config`, sets up logging, serves with graceful shutdown.
 - `src/lib.rs` builds the router: `routes()` (`/health` and everything under `/v1`) and `with_layers()` (404/405 fallbacks, panic → 500, request ID middleware).
-- `src/error.rs` is `ApiError`, the only way handlers return errors; `src/request_id.rs` adds the request ID header, the log line and the error body.
-- `tests/` holds integration tests that call the router directly with `tower::ServiceExt::oneshot`. A test that installs a `tracing` subscriber goes in its own file (see `tests/logging.rs`).
+- `src/error.rs` is `ApiError`, the only way handlers return errors, and `ErrorBody`/`ErrorDetails`, the error body schema; `src/request_id.rs` adds the request ID header, the log line and the error body.
+- `src/openapi.rs` is `ApiDoc`, the OpenAPI 3.1 spec built with utoipa, and `spec_json()`, which `main.rs` prints for `cargo run -p api -- openapi`.
+- `tests/` holds integration tests that call the router directly with `tower::ServiceExt::oneshot`. A test that installs a `tracing` subscriber goes in its own file (see `tests/logging.rs`). `tests/openapi.rs` fails when `openapi/openapi.json` differs from the generated spec.
 
 ## Rules for this app
 - Configuration: every variable is listed in `.env.example` with its default. Secrets come from the secret store named in docs/DEPLOYMENT.md and are never logged.
 - New endpoints go under `/v1` (in `v1_routes()`); only `/health` is unversioned. Changes within `/v1` are additive only.
+- Every new handler gets `#[utoipa::path]` and is listed in `paths(...)` in `ApiDoc` (`src/openapi.rs`); request and response types derive `ToSchema`. Regenerate the spec (`cargo run -p api -- openapi > openapi/openapi.json`, from the repo root) and commit it in the same PR.
 - Handlers return `Result<_, ApiError>`. Error codes are stable `snake_case` strings; a 500 never includes internal details.
 - Never log full keys or tokens (prefix only), passwords, session tokens or event properties.
 - Directories not to edit by hand: `.sqlx/` (from TASK-003); `openapi/openapi.json` at the repo root is generated from this app.
