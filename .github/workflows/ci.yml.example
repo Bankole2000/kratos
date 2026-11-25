@@ -95,11 +95,13 @@ jobs:
       postgres:
         image: postgres:17
         env:
-          POSTGRES_PASSWORD: postgres
+          # Throwaway database that exists only for this job: no password at all, so
+          # nothing secret-looking is committed. Never use trust auth outside CI.
+          POSTGRES_HOST_AUTH_METHOD: trust
         ports: ['5432:5432']
         options: --health-cmd pg_isready --health-interval 5s --health-retries 10
     env:
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+      DATABASE_URL: postgres://postgres@localhost:5432/postgres
       SQLX_OFFLINE: 'true'
     steps:
       - uses: actions/checkout@v7
