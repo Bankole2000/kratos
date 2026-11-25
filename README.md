@@ -101,7 +101,7 @@ Install everything (repo root): `pnpm install` (Cargo fetches Rust dependencies 
 | api | `cargo run -p api` | `cargo test -p api` | N/A | `cargo clippy -p api -- -D warnings` | N/A (compiler) | `cargo build -p api --release` | `sqlx migrate run --source apps/api/migrations` |
 | web | `pnpm --filter web dev` (http://localhost:13000; api URL from `NUXT_PUBLIC_API_BASE_URL`) | `pnpm --filter web test` | TBD (Playwright, with the first M1 journey) | N/A (Prettier from the root) | `pnpm --filter web typecheck` | `pnpm --filter web build` (run with `pnpm --filter web preview`) | N/A |
 | app | `pnpm --filter app tauri dev` (Android: `tauri android dev`; iOS: `tauri ios dev`) | `pnpm --filter app test` | TBD (ADR in M0) | `pnpm --filter app lint` | `pnpm --filter app typecheck` | `pnpm --filter app tauri build` | N/A |
-| ui | N/A | `pnpm --filter ui test` | N/A | `pnpm --filter ui lint` | `pnpm --filter ui typecheck` | N/A | N/A |
+| ui | N/A | `pnpm --filter ui test` (Vitest, happy-dom) | N/A | N/A (Prettier from the root) | `pnpm --filter ui typecheck` (vue-tsc) | N/A (consumed as source by web and app) | N/A |
 | types | N/A | `cargo test -p types` | N/A | `cargo clippy -p types --all-targets -- -D warnings` | N/A (compiler) | N/A | N/A |
 | api-client-ts | N/A | `pnpm --filter api-client-ts test` (includes `check:generated`) | N/A | N/A (Prettier from the root) | `pnpm --filter api-client-ts typecheck` | N/A (consumed as source; regenerate with `pnpm --filter api-client-ts generate`) | N/A |
 | sdk-ts (M3) | N/A | `pnpm --filter sdk-ts test` | N/A | `pnpm --filter sdk-ts lint` | `pnpm --filter sdk-ts typecheck` | `pnpm --filter sdk-ts build` | N/A |

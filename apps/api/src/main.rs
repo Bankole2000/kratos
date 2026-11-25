@@ -47,7 +47,7 @@ async fn main() -> ExitCode {
     };
     tracing::info!(addr = %config.addr, version = env!("CARGO_PKG_VERSION"), "api listening");
 
-    let result = axum::serve(listener, api::app(AppState { db }))
+    let result = axum::serve(listener, api::app(AppState { db }, &config.cors_origins))
         .with_graceful_shutdown(shutdown_signal())
         .await;
     match result {

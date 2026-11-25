@@ -13,7 +13,7 @@ Use this app's row in the README [Commands](../../README.md#commands) table. Run
 
 ## Layout
 - `src/main.rs` starts the server: loads `.env`, reads `Config`, sets up logging, creates the database pool, serves with graceful shutdown. `cargo run -p api -- openapi` prints the spec and exits before any of that.
-- `src/lib.rs` builds the router: `AppState` (the database pool, passed to handlers with Axum's `State`), `routes()` (`/health` and everything under `/v1`) and `with_layers()` (404/405 fallbacks, panic → 500, request ID middleware).
+- `src/lib.rs` builds the router: `AppState` (the database pool, passed to handlers with Axum's `State`), `routes()` (`/health` and everything under `/v1`) and `with_layers()` (404/405 fallbacks, panic → 500, CORS, request ID middleware outermost so preflights get `X-Request-Id` too). `src/config.rs` reads `Config` from the environment, including the CORS origins.
 - `src/db.rs` creates the SQLx pool. It connects lazily, so the api starts while Postgres is down, and waits at most a few seconds for a connection. `src/health.rs` pings the database and reports `database: "up" | "down"`.
 - `migrations/` holds the SQL migrations, run with `sqlx migrate run --source apps/api/migrations`.
 - `src/error.rs` is `ApiError`, the only way handlers return errors, and `ErrorBody`/`ErrorDetails`, the error body schema; `src/request_id.rs` adds the request ID header, the log line and the error body.
@@ -22,6 +22,7 @@ Use this app's row in the README [Commands](../../README.md#commands) table. Run
 
 ## Rules for this app
 - Configuration: every variable is listed in `.env.example` with its default. Secrets come from the secret store named in docs/DEPLOYMENT.md and are never logged.
+- CORS: the dashboard origins (web and Tauri) live in `API_CORS_ORIGINS` (default in `src/config.rs` and `.env.example`). Add a new dashboard origin there, never in code, and never allow `*`. Credentials stay off until ADR-008 (M1).
 - New endpoints go under `/v1` (in `v1_routes()`); only `/health` is unversioned. Changes within `/v1` are additive only.
 - Database: queries use the compile-time checked macros only (`sqlx::query!`, `query_as!`, `query_scalar!`). After adding or changing a query, run `cargo sqlx prepare --workspace -- --all-targets` with Postgres running and commit `.sqlx/`.
 - Migrations: add one with `sqlx migrate add --source apps/api/migrations <name>`. They are forward-only (no down files, never edit one that has been merged) and must work with the previous release still running (docs/DEPLOYMENT.md). The api never runs migrations at startup; the release runs `sqlx migrate run` as a separate step before starting the new version.
