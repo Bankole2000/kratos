@@ -9,6 +9,7 @@ target/
 dist/
 coverage/
 apps/app/src-tauri/gen/
+apps/api/bruno/
 
 # Markdown is written by hand (and reviewed with tools/doc-reviewer.html)
 *.md

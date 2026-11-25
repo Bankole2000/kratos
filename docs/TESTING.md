@@ -85,6 +85,7 @@ See the README [Commands](../README.md#commands) table. Unit, integration and co
 - [ ] Acceptance criteria met and linked to tests
 - [ ] Automated checks passed for every changed app and every app depending on a changed package
 - [ ] Generated files (OpenAPI spec, TypeScript client, SQLx query data) regenerated and committed
+- [ ] New or changed endpoints have a Bruno request with assertions (`apps/api/bruno/`)
 - [ ] No unrelated changes or exposed secrets (including in client app configuration)
 - [ ] Documentation and the affected apps' CHANGELOG.md updated where user-visible
 - [ ] PR reviewed and merged by authorized human

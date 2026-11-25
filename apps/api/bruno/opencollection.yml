@@ -1,0 +1,15 @@
+opencollection: 1.0.0
+
+info:
+  name: Platform Core API
+  version: "1"
+
+docs:
+  content: The HTTP API for Platform Core. Every error response uses the `ErrorBody` schema.
+  type: text/markdown
+bundled: false
+extensions:
+  bruno:
+    ignore:
+      - node_modules
+      - .git
