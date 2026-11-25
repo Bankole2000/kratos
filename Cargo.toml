@@ -1,0 +1,21 @@
+# Cargo workspace for every Rust crate in the repository (ADR-001).
+# Members are added by the task that creates them:
+#   apps/api (TASK-002), packages/types (TASK-005), apps/app/src-tauri (TASK-009),
+#   sdks/rust (F11), apps/mcp (F20).
+[workspace]
+resolver = "3"
+members = []
+
+# Shared by every member: inherit with `edition.workspace = true` etc.
+[workspace.package]
+edition = "2024"
+rust-version = "1.100"
+license = "MIT"
+repository = "https://github.com/Bankole2000/kratos"
+
+# Shared lint levels: inherit with `[lints] workspace = true` in each crate.
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }

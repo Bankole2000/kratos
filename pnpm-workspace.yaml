@@ -1,0 +1,7 @@
+# pnpm workspace for every JS/TS package (ADR-001). Folders without a
+# package.json (such as the Rust crate packages/types) are ignored.
+packages:
+  - apps/web
+  - apps/app
+  - packages/*
+  - sdks/ts

@@ -1,0 +1,21 @@
+{
+  "name": "platform-core",
+  "private": true,
+  "description": "Pilot Cockpit for managing multiple software development projects",
+  "license": "MIT",
+  "packageManager": "pnpm@12.23.0",
+  "engines": {
+    "node": ">=26"
+  },
+  "scripts": {
+    "test": "cargo test --workspace && pnpm -r --if-present test",
+    "lint": "cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings && pnpm -r --if-present lint && prettier --check .",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "build": "cargo build --workspace && pnpm -r --if-present build",
+    "e2e": "pnpm --filter web --if-present e2e",
+    "format": "cargo fmt --all && prettier --write ."
+  },
+  "devDependencies": {
+    "prettier": "3.10.1"
+  }
+}
