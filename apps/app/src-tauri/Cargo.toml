@@ -1,0 +1,25 @@
+[package]
+name = "app"
+version = "0.1.0"
+description = "Platform Core desktop and mobile app (Tauri 2 shell)"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+# Tauri needs a library target: mobile builds load it as a shared library (cdylib on
+# Android, staticlib on iOS), and the desktop binary in src/main.rs calls it (rlib).
+# The `_lib` suffix keeps the library name different from the binary's (cargo#8519).
+[lib]
+name = "app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.7.6", features = [] }
+
+[dependencies]
+tauri = { version = "2.12.7", features = [] }

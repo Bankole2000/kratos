@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Core defaults for the main window only: no shell, file system or HTTP plugin. The web view reaches the api with fetch, limited by the CSP in tauri.conf.json.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}
