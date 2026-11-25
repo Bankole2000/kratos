@@ -31,6 +31,12 @@ updates:
     groups:
       minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      # TypeScript stays on 5.x: TypeScript 7 drops the compiler API that openapi-typescript
+      # needs, so `pnpm --filter api-client-ts generate` fails (packages/api-client-ts/AGENTS.md).
+      # Remove this once openapi-typescript supports TypeScript 7.
+      - dependency-name: typescript
+        versions: ['>=6']
 
   # Dart SDK (from M4). Uncomment when sdks/dart exists.
   # - package-ecosystem: pub
