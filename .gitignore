@@ -77,3 +77,13 @@ Thumbs.db
 
 # Claude Code personal settings
 .claude/settings.local.json
+
+# Rust (Cargo workspace). Commit Cargo.lock and the .sqlx/ offline query data.
+target/
+
+# Nuxt
+.nuxt/
+.output/
+
+# Dart (sdks/dart)
+.dart_tool/

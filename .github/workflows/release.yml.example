@@ -1,16 +1,17 @@
-# Rename to release.yml after replacing the placeholder steps. Add or remove app jobs
-# to match apps/; job names and environment names use the app names.
+# Rename to release.yml before the first release (M5 for api, web and app; M3 for
+# sdk-ts). Job names and environment names use the release names below.
 #
 # How it works:
-# - A human pushes a tag `<app>-vX.Y.Z` (see docs/DEPLOYMENT.md, Release checklist).
-#   "resolve" reads the app name from the tag; only that app's jobs run.
-# - Each app's job uses a GitHub deployment environment (Settings → Environments),
-#   e.g. "release-web". Put that app's deploy credentials and signing material in the
-#   environment's secrets, and set "Required reviewers" to the release owner, so the
-#   job waits for human approval and secrets never reach PR builds or agents.
-# - Full native builds, signing, notarization and store uploads happen only here.
-#   macOS runners are used only for jobs that need them (iOS, macOS desktop), because
-#   they are billed at a much higher rate than Linux.
+# - A human pushes a tag `<name>-vX.Y.Z` (see docs/DEPLOYMENT.md, Release checklist):
+#   api, web or app for apps/<name>; sdk-ts, sdk-dart or sdk-rust for sdks/<language>.
+#   "resolve" reads the name from the tag; only that name's jobs run.
+# - Each job uses a GitHub deployment environment (Settings → Environments), e.g.
+#   "release-api". Put deploy credentials, signing material and registry tokens in
+#   the environment's secrets, and set "Required reviewers" to the release owner
+#   (@Bankole2000), so the job waits for approval and secrets never reach PR builds
+#   or agents.
+# - The app (Tauri) is built once per platform. macOS runners are used only for the
+#   macOS and iOS builds, because they are billed at a much higher rate than Linux.
 #
 # Check for newer action major versions, and consider pinning actions to a full
 # commit SHA.
@@ -32,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
-      app: ${{ steps.parse.outputs.app }}
+      name: ${{ steps.parse.outputs.name }}
       version: ${{ steps.parse.outputs.version }}
     steps:
       - uses: actions/checkout@v7
@@ -41,34 +42,24 @@ jobs:
           TAG: ${{ github.ref_name }}   # passed via env, never interpolated into the script
         run: |
           if [[ ! "$TAG" =~ ^([a-z][a-z0-9-]*)-v([0-9]+\.[0-9]+\.[0-9]+.*)$ ]]; then
-            echo "Tag '$TAG' is not of the form <app>-vX.Y.Z"; exit 1
+            echo "Tag '$TAG' is not of the form <name>-vX.Y.Z"; exit 1
           fi
-          app="${BASH_REMATCH[1]}"; version="${BASH_REMATCH[2]}"
-          if [ ! -d "apps/$app" ]; then echo "No app folder apps/$app"; exit 1; fi
-          if ! grep -q "## \[$version\]" "apps/$app/CHANGELOG.md"; then
-            echo "apps/$app/CHANGELOG.md has no entry for $version"; exit 1
+          name="${BASH_REMATCH[1]}"; version="${BASH_REMATCH[2]}"
+          case "$name" in
+            sdk-*) dir="sdks/${name#sdk-}" ;;
+            *)     dir="apps/$name" ;;
+          esac
+          if [ ! -d "$dir" ]; then echo "No folder $dir for tag $TAG"; exit 1; fi
+          if ! grep -q "## \[$version\]" "$dir/CHANGELOG.md"; then
+            echo "$dir/CHANGELOG.md has no entry for $version"; exit 1
           fi
-          echo "app=$app" >> "$GITHUB_OUTPUT"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
-  # ── Web client: build and deploy ─────────────────────────────
-  web:
-    needs: resolve
-    if: needs.resolve.outputs.app == 'web'
-    runs-on: ubuntu-latest
-    environment: release-web
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v7
-      - name: Fail until configured
-        run: |
-          echo "Build the web app and deploy it to production, then smoke test."
-          exit 1
-
-  # ── Server: build, migrate, deploy ───────────────────────────
+  # ── api: build, migrate, deploy (target in D1) ───────────────
   api:
     needs: resolve
-    if: needs.resolve.outputs.app == 'api'
+    if: needs.resolve.outputs.name == 'api'
     runs-on: ubuntu-latest
     environment: release-api
     timeout-minutes: 30
@@ -76,51 +67,99 @@ jobs:
       - uses: actions/checkout@v7
       - name: Fail until configured
         run: |
-          echo "Build the server artifact, run backward-compatible migrations, deploy, smoke test."
+          echo "Build the api binary or image, run sqlx migrate (backward compatible), deploy, smoke test /health."
           exit 1
 
-  # ── Mobile: one job per platform ─────────────────────────────
-  mobile-android:
+  # ── web: build and deploy (target in D1) ─────────────────────
+  web:
     needs: resolve
-    if: needs.resolve.outputs.app == 'mobile'
+    if: needs.resolve.outputs.name == 'web'
     runs-on: ubuntu-latest
-    environment: release-mobile
+    environment: release-web
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Fail until configured
+        run: |
+          echo "Build the Nuxt app, deploy it to production, smoke test sign-in."
+          exit 1
+
+  # ── app: desktop, one build per operating system ─────────────
+  app-desktop:
+    needs: resolve
+    if: needs.resolve.outputs.name == 'app'
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    environment: release-app
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      # tauri-apps/tauri-action can build, sign and attach installers to a draft GitHub release.
+      - name: Fail until configured
+        run: |
+          echo "Build the Tauri app for ${{ matrix.os }}, sign it (Windows code signing / macOS Developer ID),"
+          echo "notarize it on macOS, sign the updater artifacts, and publish as a draft for the release owner."
+          exit 1
+
+  # ── app: mobile, one job per platform ────────────────────────
+  app-android:
+    needs: resolve
+    if: needs.resolve.outputs.name == 'app'
+    runs-on: ubuntu-latest
+    environment: release-app
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
       - name: Fail until configured
         run: |
-          echo "Build a signed Android bundle (keystore from environment secrets) and upload it to the internal testing track."
+          echo "Run 'tauri android build' with the upload keystore from environment secrets; upload the bundle to the internal testing track."
           exit 1
 
-  mobile-ios:
+  app-ios:
     needs: resolve
-    if: needs.resolve.outputs.app == 'mobile'
+    if: needs.resolve.outputs.name == 'app'
     runs-on: macos-latest   # required for iOS; higher cost
-    environment: release-mobile
+    environment: release-app
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
       - name: Fail until configured
         run: |
-          echo "Build and sign the iOS app (certificates from environment secrets) and upload it to TestFlight."
+          echo "Run 'tauri ios build' with certificates from environment secrets; upload to TestFlight."
           exit 1
 
-  # ── Desktop: one build per operating system ──────────────────
-  desktop:
+  # ── SDKs: publish to package registries ──────────────────────
+  sdk-ts:
     needs: resolve
-    if: needs.resolve.outputs.app == 'desktop'
-    strategy:
-      fail-fast: true
-      matrix:
-        os: [windows-latest, macos-latest, ubuntu-latest]   # drop the platforms you don't ship
-    runs-on: ${{ matrix.os }}
-    environment: release-desktop
-    timeout-minutes: 60
+    if: needs.resolve.outputs.name == 'sdk-ts'
+    runs-on: ubuntu-latest
+    environment: release-sdk-ts
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write   # npm provenance / trusted publishing
     steps:
       - uses: actions/checkout@v7
       - name: Fail until configured
         run: |
-          echo "Build the desktop app for ${{ matrix.os }}, sign it (Windows code signing / macOS Developer ID),"
-          echo "notarize it on macOS, and publish it to the update channel as a draft for the release owner."
+          echo "Build sdks/ts, run the conformance suite, publish to npm (name in D6)."
+          exit 1
+
+  sdk-dart:
+    needs: resolve
+    if: needs.resolve.outputs.name == 'sdk-dart'
+    runs-on: ubuntu-latest
+    environment: release-sdk-dart
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write   # pub.dev automated publishing via OIDC
+    steps:
+      - uses: actions/checkout@v7
+      - name: Fail until configured
+        run: |
+          echo "Run the conformance suite in sdks/dart, then dart pub publish (name in D6)."
           exit 1

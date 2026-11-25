@@ -1,6 +1,8 @@
-# {{Project name}}
+# Platform Core
 
-{{One-line description of what this project does and for whom.}}
+Pilot Cockpit for managing multiple software development projects.
+
+The shared foundation for every app in the portfolio: one Rust server and one API that track projects, serve reference data, collect metrics and issue API keys, with an SDK for each language. Code name kratos. See [docs/platform-core.md](docs/platform-core.md) for the overview and guiding principles.
 
 ## Using this template (delete this section after setup)
 This repository was created from an idea-to-MVP starter kit for solo developers and teams of 2–5. It assumes a monorepo with one or more apps (e.g. web, API, mobile); a single-app project simply has one app. The kit does not provision GitHub configuration or deployment; the CI and Dependabot files are intentionally disabled (`.example`) until real commands are configured.
@@ -17,6 +19,27 @@ This repository was created from an idea-to-MVP starter kit for solo developers 
 Tip: keep a pristine copy of the kit as a GitHub template repository (Settings → Template repository) so new projects start from "Use this template".
 
 ## Repository layout
+Platform Core's layout (created in M0; `apps/mcp` and `sdks/python` come later):
+
+```
+apps/
+  api/            Rust (Axum) server: all reads and writes
+  web/            Nuxt: dashboard on the web (SSR)
+  app/            Vue 3 + Vite inside Tauri 2: desktop (Windows/macOS/Linux) and mobile (Android/iOS)
+  mcp/            Rust MCP server for AI agents (v2)
+packages/
+  ui/             Vue + Vuetify screens, components and composables shared by web and app
+  api-client-ts/  TypeScript client generated from the OpenAPI spec
+  types/          Rust crate of shared domain types
+sdks/
+  ts/  dart/  rust/  python/   Published SDKs (npm, pub.dev, crates.io, PyPI)
+openapi/          Generated openapi.json, committed: the API contract
+```
+
+Cargo workspace: `apps/api`, `apps/mcp`, `packages/types`, `sdks/rust`, `apps/app/src-tauri`. pnpm workspace: `apps/web`, `apps/app`, `packages/ui`, `packages/api-client-ts`, `sdks/ts`.
+
+General layout of the starter template:
+
 ```
 apps/<app>/          Deployable apps, e.g. apps/web, apps/api, apps/android, apps/desktop
   AGENTS.md          App-specific agent instructions (stack, commands, boundaries)
@@ -52,30 +75,41 @@ Documents drafted or changed by an agent are reviewed by a human with `tools/doc
 
 1. Open `tools/doc-reviewer.html` in a browser (Chrome or Edge can save files directly; other browsers download them), choose **Open project folder** and select the repository root.
 2. Fill in **Project setup** first: project name, repository, owners, apps and conventions. These facts are used across many files, including CODEOWNERS, CI and the GitHub setup script; the repository and default branch are detected from `.git` where possible.
-3. Go through each document item by item: accept, flag or modify it, fill in short placeholders (commands, names, URLs), add missing items, and give the document a verdict. Open placeholders are highlighted red; those answered by setup or filled in turn green. Progress is saved in the browser, so you can stop and come back.
-4. Choose **Export reviews**. The setup and each reviewed document get one file in `docs/reviews/` (e.g. `2026-11-25-project-setup.md`, `2026-11-25-PRD.md`). Commit them.
+3. Go through each document: flag or modify what needs to change, fill in short placeholders (commands, names, URLs), add missing items, and give the document a verdict. You don't have to open every item: **✓ Accept rest** (or **✓ All** next to a section heading, or **✓ Accept all** on a document's card) accepts everything you haven't decided on, and the review file notes how many items were accepted that way. Open placeholders are highlighted red; those answered by setup or filled in turn green. Progress is saved in the browser, so you can stop and come back.
+4. Choose **Export reviews**. The setup and each reviewed document get one file in `docs/reviews/` (e.g. `2026-11-25-project-setup.md`, `2026-11-25-PRD.md`); a document whose review hasn't changed since its last file is not saved again. Commit them.
 5. Ask the agent to apply open reviews. It edits the documents and records a resolution for each entry (see AGENTS.md, "Applying doc reviews").
 6. Repeat until the verdict is Approved, then set the document's Status to Approved.
 
+To avoid holding up building, the owner may approve a document as drafted and review its sections when the milestone that needs them is planned; the Approval section records which was done.
+
 ## Local development
-- Prerequisites: {{runtimes and versions, package manager(s), database, mobile and desktop SDKs/simulators, infrastructure CLI if any}}
+- Prerequisites (exact versions are pinned in M0, TASK-001): Rust stable via rustup, with `sqlx-cli`; Node.js LTS with pnpm (via Corepack); Docker for local Postgres; the [Tauri 2 prerequisites](https://v2.tauri.app/start/prerequisites/) for your OS; Android Studio with the NDK for Android builds; Xcode on macOS for iOS builds; the Dart SDK for `sdks/dart`.
 - Configure: for each app, copy `apps/<app>/.env.example` to `apps/<app>/.env` and supply local values. The root `.env.example` covers repository-wide tooling only.
 
 ## Commands
 This table is the single source of truth for project commands. Other documents and agents refer here. Use the "All apps" row to check everything before a PR; use an app's row when working inside that app. There is one row per app, package with its own checks, and `infra`; add or delete rows to match. Write N/A where a command doesn't apply.
 
-Install everything (repo root): {{command}}
+The commands below are the intended ones; none work until M0 creates the workspaces (TASK-010 verifies and corrects this table). Start Postgres first with `docker compose up -d`.
+
+Install everything (repo root): `pnpm install` (Cargo fetches Rust dependencies on first build)
 
 | App | Run locally | Test | E2E | Lint | Typecheck | Build | Migrations |
 |---|---|---|---|---|---|---|---|
-| All apps (repo root) | — | {{command}} | {{command or N/A}} | {{command}} | {{command or N/A}} | {{command}} | — |
-| {{app 1, e.g. web}} | {{command}} | {{command}} | {{command or N/A}} | {{command}} | {{command or N/A}} | {{command}} | N/A |
-| {{app 2, e.g. api}} | {{command}} | {{command}} | {{command or N/A}} | {{command}} | {{command or N/A}} | {{command}} | {{command or N/A}} |
-| {{app 3, e.g. mobile}} | {{command}} | {{command}} | {{command or N/A}} | {{command}} | {{command or N/A}} | {{command}} | N/A |
+| All apps (repo root) | — | `cargo test --workspace && pnpm -r test` | `pnpm --filter web e2e` | `cargo fmt --check && cargo clippy --workspace -- -D warnings && pnpm -r lint` | `pnpm -r typecheck` | `cargo build --workspace && pnpm -r build` | — |
+| api | `cargo run -p api` | `cargo test -p api` | N/A | `cargo clippy -p api -- -D warnings` | N/A (compiler) | `cargo build -p api --release` | `sqlx migrate run --source apps/api/migrations` |
+| web | `pnpm --filter web dev` | `pnpm --filter web test` | `pnpm --filter web e2e` | `pnpm --filter web lint` | `pnpm --filter web typecheck` | `pnpm --filter web build` | N/A |
+| app | `pnpm --filter app tauri dev` (Android: `tauri android dev`; iOS: `tauri ios dev`) | `pnpm --filter app test` | TBD (ADR in M0) | `pnpm --filter app lint` | `pnpm --filter app typecheck` | `pnpm --filter app tauri build` | N/A |
+| ui | N/A | `pnpm --filter ui test` | N/A | `pnpm --filter ui lint` | `pnpm --filter ui typecheck` | N/A | N/A |
+| api-client-ts | N/A | N/A | N/A | N/A | `pnpm --filter api-client-ts typecheck` | `pnpm --filter api-client-ts generate` | N/A |
+| sdk-ts (M3) | N/A | `pnpm --filter sdk-ts test` | N/A | `pnpm --filter sdk-ts lint` | `pnpm --filter sdk-ts typecheck` | `pnpm --filter sdk-ts build` | N/A |
+| sdk-dart (M4) | N/A | `dart test` (in sdks/dart) | N/A | `dart analyze` | N/A | N/A | N/A |
 
-Infrastructure (if `infra/` exists): plan {{command}} · validate/lint {{command}}. Applying is a release step; see `docs/DEPLOYMENT.md`.
+Generated files: `cargo run -p api -- openapi > openapi/openapi.json` (spec), `pnpm --filter api-client-ts generate` (TypeScript client), `cargo sqlx prepare --workspace` (SQLx query data).
+
+Infrastructure: none yet (ADR-002, depends on D1).
 
 ## Documentation
+- [Project overview and guiding principles](docs/platform-core.md)
 - [Product requirements](docs/PRD.md)
 - [Design](docs/DESIGN.md)
 - [Technical specification](docs/TECHNICAL.md)
@@ -88,4 +122,4 @@ Infrastructure (if `infra/` exists): plan {{command}} · validate/lint {{command
 - [Document reviews](docs/reviews/)
 
 ## License
-{{License name, e.g. MIT, or "Proprietary — all rights reserved". Add a matching LICENSE file.}}
+MIT. See [LICENSE](LICENSE). The SDKs are published under the same license.

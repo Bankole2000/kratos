@@ -1,13 +1,13 @@
 # GitHub Management Specification
 
-Status: Draft | Owner: {{owner}} | Version: 0.1 | Last updated: {{YYYY-MM-DD}}
+Status: Approved | Owner: @Bankole2000 | Version: 1.0 | Last updated: 2026-11-25
 
 ## Configuration
-- Repository: {{owner/repo}}
-- Project: {{owner, project number or ID}}
-- Default branch: {{main}}
+- Repository: Bankole2000/kratos (public)
+- Project: TBD (GitHub Project owned by @Bankole2000, created during setup)
+- Default branch: main
 - Configure branch protection: require PRs, require the `ci-ok` status check only (it summarizes the per-app CI jobs, which are skipped when their app is unchanged), and require review from code owners (`.github/CODEOWNERS`). Use least-privilege credentials. Never store tokens in this file.
-- `bash scripts/setup-github.sh --apps <app1,app2,…>` can create the labels, milestones and custom Project fields below. App labels come from `--apps`, or from the folders in `apps/` once they exist.
+- `bash scripts/setup-github.sh --apps api,web,app` can create the labels, milestones and custom Project fields below. App labels come from `--apps`, or from the folders in `apps/` once they exist.
 
 ## Project fields
 | Field | Values | New issue default |
@@ -50,9 +50,10 @@ Use exactly one `type:` label, the `app:` label of each app the issue changes (n
 - `type:performance` — Performance work
 
 ### App
-One per app in `apps/`, plus one for shared code and one for repository-wide work. Names match the folder names.
-- `app:{{app 1, e.g. web}}`, `app:{{app 2, e.g. api}}`, `app:{{app 3, e.g. mobile}}` — Work in that app
+One per app in `apps/`, plus labels for shared code, SDKs, infrastructure and repository-wide work. Names match the folder names. `apps/mcp` gets `app:mcp` when it is created in v2.
+- `app:api`, `app:web`, `app:app` — Work in that app. Changes to `openapi/` belong to `app:api`, which generates it.
 - `app:packages` — Shared code in `packages/`
+- `app:sdks` — Published SDKs in `sdks/`; name the SDK in the issue title, e.g. `[Task] TASK-040: sdk-ts batching`
 - `app:infra` — Infrastructure-as-code in `infra/`
 - `app:repo` — Repository-wide work (CI, tooling, docs)
 
@@ -76,7 +77,7 @@ One per app in `apps/`, plus one for shared code and one for repository-wide wor
 
 ## Multi-app work
 - A feature that needs changes in more than one app gets a parent issue (the user-facing outcome, linked to FR IDs) with one sub-issue per app. Each sub-issue has a single `app:` label and its own acceptance criteria, and is delivered in its own PR.
-- Order sub-issues with dependencies: infrastructure (`app:infra`) first, then the shared contract (`app:packages`), then servers, then clients. Clients may merge behind a feature flag before the server is released.
+- Order sub-issues with dependencies: infrastructure (`app:infra`) first, then the api (`app:api`, which regenerates the contract in `openapi/`), then shared packages (`app:packages`), then SDKs (`app:sdks`) and clients (`app:web`, `app:app`). Clients may merge behind a feature flag before the api change is released.
 - The parent issue is Done when all sub-issues are Done and the end-to-end acceptance test passes.
 
 ## Execution lifecycle
@@ -90,3 +91,6 @@ Use the template, link the issue, report actual validation, identify risks. Use 
 
 ## Setup verification
 Confirm actual field names/options and IDs, milestone names, labels, permissions, branch rules and automation behavior before agents write. Project fields may require separate API permissions (`gh auth refresh -s project`). This document is a specification, not live GitHub configuration.
+
+## Approval
+Approved by @Bankole2000 on 2026-11-25, revision 1.0, to start building. Approved as drafted without an item-by-item review; sections are revisited when the milestone that needs them is planned, and open TBDs stay open decisions.
