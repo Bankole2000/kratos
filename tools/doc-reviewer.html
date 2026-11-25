@@ -104,7 +104,13 @@ button{font-family:var(--font)}
 .progress-fill{height:100%;background:var(--accent);transition:width .3s}
 .review-body{display:flex;flex:1;overflow:hidden;min-height:0}
 .sidebar{width:240px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;background:var(--surface);padding:10px 6px;display:flex;flex-direction:column;gap:1px}
-.sidebar-section{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg-faint);padding:10px 8px 4px}
+.sidebar-section{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg-faint);padding:10px 8px 4px;display:flex;align-items:center;gap:6px}
+.sidebar-section .sec-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sec-accept{background:none;border:1px solid transparent;border-radius:4px;padding:0 5px;font-size:10px;font-weight:600;color:var(--d0);cursor:pointer;text-transform:none;letter-spacing:0;opacity:.55}
+.sidebar-section:hover .sec-accept,.sec-accept:focus{opacity:1;border-color:var(--d0);background:var(--d0-bg)}
+.btn-ghost.btn-accept{border-color:var(--d0);color:var(--d0);background:var(--d0-bg)}
+.btn-card-accept{margin-top:6px;width:100%;background:none;border:1px solid var(--d0);color:var(--d0);border-radius:6px;padding:6px 10px;font-size:12px;font-weight:500;cursor:pointer}
+.btn-card-accept:hover{background:var(--d0-bg)}
 .sb-item{display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:6px;cursor:pointer;font-size:12px;color:var(--fg-muted);line-height:1.4}
 .sb-item:hover{background:var(--tag-bg);color:var(--fg)}
 .sb-item.active{background:var(--accent-bg);color:var(--accent);font-weight:500}
@@ -285,6 +291,7 @@ mark.tbd{background:var(--d2-bg);color:var(--d2);border-radius:4px;padding:0 3px
     <span class="topbar-title" id="rev-title"></span>
     <span class="type-badge" id="rev-type-badge"></span>
     <span class="topbar-progress" id="rev-progress"></span>
+    <button class="btn-ghost btn-accept" id="rev-accept-btn" title="Accept every item you haven't decided on; flagged and changed items stay as they are">✓ Accept rest</button>
     <button class="btn-ghost btn-add" id="rev-add-btn">+ Add</button>
     <button class="btn-ghost" id="rev-queue-btn">← Queue</button>
   </div>
@@ -755,6 +762,19 @@ function cell(v) { return String(v || '').replace(/\|/g, '\\|').replace(/\n/g, '
 function hasFills(state) {
   return Object.values((state && state.fills) || {}).some(f => Object.values(f.values || {}).some(v => String(v).trim()));
 }
+// Accepts every item without a decision, optionally only those in one section.
+// Never changes an existing decision (flagged or modified items stay as they are).
+// Returns the number of items accepted.
+function acceptRemaining(items, decisions, section) {
+  let n = 0;
+  for (const it of items) {
+    if (decisions[it.key] || (section !== undefined && it.section !== section)) continue;
+    decisions[it.key] = { d: 'd0', note: '', extra: '', hash: it.hash, bulk: true };
+    n++;
+  }
+  return n;
+}
+
 function hasReviewContent(state) {
   return !!(state && (Object.keys(state.decisions || {}).length || (state.added || []).length || state.verdict || hasFills(state)));
 }
@@ -839,6 +859,8 @@ function buildReviewMarkdown(doc, state, opts) {
 
   L.push('## Accepted (' + accepted.length + ')', '');
   if (!accepted.length) L.push('None.', '');
+  const bulk = accepted.filter(it => decisions[it.key].bulk).length;
+  if (bulk) L.push(bulk + ' of these were accepted in bulk ("Accept all"), without being opened one by one.', '');
   for (const it of accepted) L.push('- ' + ref(it) + (it.id ? ' — ' + it.title : '') + ' (line ' + it.line + ')');
   if (accepted.length) L.push('');
 
@@ -1153,8 +1175,17 @@ function buildQueue() {
       '<div class="doc-card-status"><div class="doc-card-progress"><div class="doc-card-progress-fill" style="width:' + s.pct + '%"></div></div><span class="doc-card-pct">' + s.done + '/' + s.total + '</span></div>' +
       '<div class="verdict-row"><label for="verdict-' + di + '">Verdict</label><select class="field-select" id="verdict-' + di + '"><option value="">Not given</option>' +
       VERDICTS.map(v => '<option' + (doc.state.verdict === v ? ' selected' : '') + '>' + v + '</option>').join('') + '</select></div>' +
-      '<button class="btn-review ' + btnCls + '"' + (s.total ? '' : ' disabled') + '>' + (s.total ? btnLabel : 'Nothing to review') + '</button>';
+      '<button class="btn-review ' + btnCls + '"' + (s.total ? '' : ' disabled') + '>' + (s.total ? btnLabel : 'Nothing to review') + '</button>' +
+      (s.done < s.total ? '<button class="btn-card-accept" title="Accept every item you haven\'t decided on, without opening the document">✓ Accept all' + (s.done ? ' remaining' : '') + ' (' + (s.total - s.done) + ')</button>' : '');
     card.querySelector('.btn-review').addEventListener('click', () => openDocReview(di));
+    const accBtn = card.querySelector('.btn-card-accept');
+    if (accBtn) accBtn.addEventListener('click', () => {
+      const open = s.total - s.done;
+      if (!confirm('Accept the ' + open + ' undecided item' + (open !== 1 ? 's' : '') + ' in ' + doc.path + ' without opening it? Items you flagged or changed stay as they are.')) return;
+      acceptRemaining(doc.items, doc.state.decisions);
+      saveState(doc);
+      buildQueue();
+    });
     card.querySelector('select').addEventListener('change', e => { doc.state.verdict = e.target.value; saveState(doc); });
     grid.appendChild(card);
   });
@@ -1346,7 +1377,13 @@ function buildReviewSidebar() {
   doc.items.forEach((item, idx) => {
     if (item.section !== lastSec) {
       const h = document.createElement('div'); h.className = 'sidebar-section';
-      h.textContent = item.section || 'Top'; h.title = item.section;
+      const name = document.createElement('span'); name.className = 'sec-name';
+      name.textContent = item.section || 'Top'; name.title = item.section;
+      const acc = document.createElement('button'); acc.className = 'sec-accept'; acc.textContent = '✓ All';
+      acc.title = 'Accept the undecided items in this section';
+      const sec = item.section;
+      acc.addEventListener('click', e => { e.stopPropagation(); bulkAccept(sec); });
+      h.append(name, acc);
       sb.appendChild(h); lastSec = item.section;
     }
     const e = document.createElement('div'); e.className = 'sb-item'; e.id = 'sb-' + idx;
@@ -1504,6 +1541,22 @@ $('expand-extra-text').addEventListener('input', e => { const d = currentDecisio
 $('prev-btn').addEventListener('click', () => { if (currentItemIdx > 0) { currentItemIdx--; renderItem(); } });
 $('next-btn').addEventListener('click', () => { const doc = docs[currentDocIdx]; if (currentItemIdx < doc.items.length - 1) { currentItemIdx++; renderItem(); } else finishDoc(); });
 $('rev-queue-btn').addEventListener('click', finishDoc);
+$('rev-accept-btn').addEventListener('click', () => bulkAccept());
+
+// Accepts the undecided items of the open document (or of one section of it).
+// The whole document asks for confirmation; a section doesn't, since each item
+// can still be changed afterwards.
+function bulkAccept(section) {
+  const doc = docs[currentDocIdx];
+  const open = doc.items.filter(it => !doc.state.decisions[it.key] && (section === undefined || it.section === section)).length;
+  if (!open) return;
+  if (section === undefined && !confirm('Accept the ' + open + ' item' + (open !== 1 ? 's' : '') + " you haven't decided on? Items you flagged or changed stay as they are.")) return;
+  acceptRemaining(doc.items, doc.state.decisions, section);
+  saveState(doc);
+  const next = doc.items.findIndex(it => !doc.state.decisions[it.key]);
+  if (next >= 0) currentItemIdx = next;
+  renderItem();
+}
 function finishDoc() { closeAddPanel(); buildQueue(); }
 
 // ═══════════════════════════════════════════════════════
