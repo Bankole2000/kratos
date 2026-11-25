@@ -27,7 +27,7 @@ Humans review documents with `tools/doc-reviewer.html`, which writes one file pe
 
 ## Execution rules
 1. Read PRD, design, technical specification, roadmap, testing and GitHub protocol as relevant.
-2. Verify the issue is open, Status = Todo, Human Review = Approved, AI Ready = Yes, and all dependencies are Done.
+2. Verify the issue is open, Status = Todo, Human Review = Approved, AI Ready = Yes, and all dependencies are Done. Exception (early start, authorized by the owner on 2026-11-25): when a dependency is an open PR, you may start the parts of the task that don't need it. Work on your own branch from the default branch and never merge, copy or build on the dependency's unmerged branch. Write the code that uses the dependency against its agreed interface, with nothing stubbed committed. Keep your PR a draft until every dependency is merged; then merge the default branch in, finish and check the integration, and mark it ready.
 3. Claim the issue: if it already has an assignee or a linked PR, stop and pick another task. Otherwise assign yourself, comment that you have claimed it (name the agent or person), then set Status = In Progress. Re-check the assignee after claiming; if someone else claimed it concurrently, unassign yourself and stop.
 4. Inspect the code and plan the smallest sufficient change. Follow existing architecture, conventions and the commands in the README [Commands](README.md#commands) table (the row for the app you are changing). Preserve unrelated changes.
 5. Implement the acceptance criteria; add tests for success, failure and permissions as applicable.

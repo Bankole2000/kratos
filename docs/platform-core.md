@@ -35,7 +35,7 @@ Later, an **MCP server** lets AI agents work with Platform Core on behalf of a u
 | Database | **Postgres** | Single source of truth. Migrations with `sqlx migrate`. |
 | Database access | **SQLx only** for the MVP | Compile-time checked queries (`query_as!`), `cargo sqlx prepare` for CI. SeaORM may be added later for CRUD only (see D2). |
 | API contract | **OpenAPI**, generated from Rust code with `utoipa` | The spec is the contract every client and SDK is built from. |
-| Shared UI | **Vue 3 + Vuetify 3** in a shared package | Components, composables, API client and types written once. |
+| Shared UI | **Vue 3 + Vuetify 4** in a shared package (OD-008) | Components, composables, API client and types written once. |
 | Desktop + mobile | **Plain Vue + Vite inside Tauri 2** | One app for Windows/macOS/Linux, Android and iOS. |
 | Public web | **Nuxt 3** (SSR) | For SEO, as the web side may become public-facing. |
 | Frontend layout | **Option A: shared package, two apps** | `packages/ui` used by both `apps/web` (Nuxt) and `apps/app` (Vue + Tauri). |

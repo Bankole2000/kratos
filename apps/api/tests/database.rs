@@ -33,7 +33,10 @@ async fn migrations_create_the_datasets_table(pool: PgPool) {
 // `./` is required: SQLx rejects a bare folder name. The path is relative to apps/api.
 #[sqlx::test(migrations = "./migrations")]
 async fn health_reports_database_up(pool: PgPool) {
-    let app = api::app(api::AppState { db: pool });
+    let app = api::app(
+        api::AppState { db: pool },
+        &api::config::default_cors_origins(),
+    );
     let request = Request::builder()
         .uri("/health")
         .body(Body::empty())

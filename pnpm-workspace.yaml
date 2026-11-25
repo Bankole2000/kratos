@@ -5,3 +5,13 @@ packages:
   - apps/app
   - packages/*
   - sdks/ts
+
+# Shared versions for the Vue packages and apps (`"vue": "catalog:"` in a package.json),
+# so web, app and ui always resolve the same Vue, Vuetify and test tooling.
+catalog:
+  vue: 3.5.46
+  vuetify: 4.3.4
+  typescript: 5.9.3
+  vitest: 5.1.1
+  '@vue/test-utils': 2.6.0
+  happy-dom: 21.0.4
