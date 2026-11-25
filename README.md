@@ -116,7 +116,7 @@ Infrastructure: none yet (ADR-002, depends on D1).
 `apps/api/bruno/` is a [Bruno](https://www.usebruno.com/) collection for the api, in the OpenCollection YAML format that Bruno 4.x uses (one `.yml` file per request). Its requests carry assertions, so they double as smoke tests.
 
 - In the app: Bruno 4.x, **Open Collection**, choose `apps/api/bruno`, select the `local` environment (`baseUrl` = `http://127.0.0.1:18080`) and send a request.
-- From the terminal: start the api (`cargo run -p api`), then `pnpm bruno:run`. It runs `bru run --env local` through `pnpm dlx @usebruno/cli@4.1.0`, so nothing is installed. Point it at another port with `pnpm bruno:run --env-var baseUrl=http://127.0.0.1:18080`.
+- From the terminal: start the api (`cargo run -p api`), then `pnpm bruno:run`. It runs `bru run --env local` through `pnpm dlx @usebruno/cli@4.1.0`, so nothing is installed. Point it at another port with `pnpm bruno:run --env-var baseUrl=http://127.0.0.1:18081`.
 - Keeping it in step with the spec: the collection was generated from `openapi/openapi.json` with `bru import openapi` and then curated. Every new or changed endpoint adds its request (with assertions) in the same PR; `pnpm bruno:check` fails when one is missing. To start a request for a new endpoint, import the spec into a scratch folder (`pnpm dlx @usebruno/cli@4.1.0 import openapi --source openapi/openapi.json --output <scratch dir>`) and copy the generated `.yml` file across.
 - Secrets (keys, tokens, the admin password; none yet) never go in committed files: mark the variable **Secret** in the Bruno environment (its value stays on your machine), or put it in an untracked `apps/api/bruno/.env` (gitignored) and refer to it as `{{process.env.NAME}}`.
 
