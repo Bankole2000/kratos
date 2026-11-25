@@ -133,6 +133,7 @@ Priorities use MoSCoW for the MVP (Must / Should / Could). Later phases are mark
 - Fields: name, slug, description, status, stack tags, live URL, notes.
 - Status lifecycle: `idea → active → paused → shipped → abandoned`.
 - Archived projects are hidden by default but never deleted.
+- **Components** (decided 2026-11-25, PRD OD-007): a project can have parts such as its web app, mobile app, desktop app or server. One level only; each has a name, slug, kind and an `active` or `retired` status. Links, costs and keys can be tagged with a component; events take the component of the key that sent them; totals stay per project. A part with its own lifecycle, users or costs, or shared by several products, is a separate project instead.
 
 ### F2. Quick links · MVP · Must
 - A shelf of typed links per project: repo, docs, design, CI, deployment, staging, production, other.
@@ -145,7 +146,7 @@ Priorities use MoSCoW for the MVP (Must / Should / Could). Later phases are mark
 - Costs in different currencies are converted to one display currency using the reference data (F6).
 
 ### F4. API keys · MVP · Must
-- Multiple named keys per project (e.g. "Production", "Staging").
+- Multiple named keys per project (e.g. "Production", "Staging"), each optionally tied to one of the project's components.
 - Each key has a **list of scopes** (principle 11). Presets: **secret**, **publishable**, **agent**; scopes can also be picked individually.
 - Environment tag: production / staging / development.
 - Shown once on creation; stored as a SHA-256 hash with a visible prefix for identification.
@@ -176,7 +177,7 @@ Priorities use MoSCoW for the MVP (Must / Should / Could). Later phases are mark
 - Retention period configurable; raw events can later be rolled up into daily totals.
 
 ### F8. Metrics dashboard · MVP · Must
-- Per project: live event feed filterable by type, volume charts (7 / 30 days), monthly revenue total, latest errors, last ping ("is it up?").
+- Per project: live event feed filterable by type, component and platform, volume charts (7 / 30 days), monthly revenue total, latest errors, last ping ("is it up?") overall and per component.
 - Portfolio overview: all projects with status, monthly burn, last activity.
 
 ### F9. TypeScript SDK · MVP · Must
@@ -249,6 +250,7 @@ init({ apiKey, environment, endpoint?, enabled?, sampleRate?, flushInterval?, ma
 - Can be turned off or sampled per environment.
 - Caches reference data and refreshes it when the dataset version changes.
 - Identifies itself (`sdk: ts/1.2.0`) so the server can track SDK versions in use.
+- Attaches the platform it runs on (`web`, `ios`, `android`, `windows`, `macos`, `linux`, `server`) to every event when it can detect it. It never sends a component: the server takes that from the key.
 
 ---
 

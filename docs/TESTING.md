@@ -1,6 +1,6 @@
 # Testing and Acceptance
 
-Status: Approved | Owner: @Bankole2000 | Version: 1.0 | Last updated: 2026-11-25
+Status: Approved | Owner: @Bankole2000 | Version: 1.1 | Last updated: 2026-11-25
 References: PRD.md, TECHNICAL.md
 
 ## Strategy
@@ -68,6 +68,13 @@ Test data: isolated per environment; synthetic only. Reference data tests use th
 | TC-036 | NFR-001 | api | Trigger a 400, 401, 403, 404 and 500 | Each body has code, message and request ID; the ID appears in the logs; the 500 reveals no internals |
 | TC-037 | NFR-004 | api | Create, use and revoke keys and sign in, then search the logs | No full key, token or password appears; keys appear by prefix only |
 | TC-038 | NFR-006 | sdk-ts, sdk-dart | Point the SDK at an unreachable server and call every method; fill the offline queue past its cap | No exceptions reach the app; the main thread is not blocked; the queue stays at its cap |
+| TC-039 | FR-036 | api, web | Add a component of each kind; add a second with the same slug in the same project, then in another project | Each appears with every field; the duplicate in the same project gets 409 `component_slug_taken`; the other project accepts it |
+| TC-040 | FR-037 | api, web | Edit a component; retire one that has links, costs, a key and events; toggle "show retired"; restore it | Edits shown and audited; hidden by default, shown with the toggle, all related data intact; no delete endpoint exists |
+| TC-041 | FR-038 | api, web | Tag a link with a component; filter by it; try to tag a link with another project's component | Tag shown; filter shows only that component's links; the foreign component is rejected with a validation error |
+| TC-042 | FR-039 | api | Project with costs 10/month (tagged server), 120/year (untagged) and 50 one-off (tagged web) | Burn 20 and one-off 50 as before tagging; server subtotal 10/month; web subtotal one-off 50 |
+| TC-043 | FR-040 | api | Send events with a key tied to component A, then with a project-wide key; try to create a key for another project's component | First events stored with component A, second with none; the foreign component is rejected |
+| TC-044 | FR-041 | api, web | Seed events and pings for components A and B; stop B's pings past the threshold; filter metrics by A | Every figure counts only A's events; B is marked not reporting and A is not |
+| TC-045 | FR-042 | api, sdk-ts | Send events from the SDK in Node and in a browser, and one raw event with no platform; filter the feed by `web` | Stored as `server`, `web` and none; the filter shows only the browser event |
 
 Cover failure cases, validation, authorization and critical user journeys. Use synthetic data; never production secrets or personal data. A journey that crosses apps is tested end to end at least once.
 
@@ -90,4 +97,4 @@ See the README [Commands](../README.md#commands) table. Unit, integration and co
 - Known limitations listed in the release notes. Human sign-off: @Bankole2000.
 
 ## Approval
-Approved by @Bankole2000 on 2026-11-25, revision 1.0, to start building. Approved as drafted without an item-by-item review; sections are revisited when the milestone that needs them is planned, and open TBDs stay open decisions.
+Approved by @Bankole2000 on 2026-11-25, revision 1.0, to start building. Approved as drafted without an item-by-item review; sections are revisited when the milestone that needs them is planned, and open TBDs stay open decisions. Revision 1.1 adds project components (PRD OD-007), approved as drafted by @Bankole2000 on 2026-11-25.
