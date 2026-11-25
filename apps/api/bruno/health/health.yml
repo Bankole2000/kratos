@@ -1,0 +1,35 @@
+info:
+  name: Health
+  type: http
+  seq: 1
+  tags:
+    - health
+
+http:
+  method: GET
+  url: "{{baseUrl}}/health"
+  auth: inherit
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+    - expression: res.body.status
+      operator: eq
+      value: ok
+    - expression: res.body.database
+      operator: eq
+      value: up
+    - expression: res.body.version
+      operator: isString
+  scripts:
+    - type: tests
+      code: |-
+        test("sends an X-Request-Id header", function () {
+          expect(res.headers["x-request-id"]).to.be.a("string").and.not.be.empty;
+        });
+
+docs:
+  content: Reports whether the api and its database are up, and the api's version.
+  type: text/markdown

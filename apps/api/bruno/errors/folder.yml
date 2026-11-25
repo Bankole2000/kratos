@@ -1,0 +1,10 @@
+info:
+  name: errors
+  type: folder
+
+request:
+  auth: inherit
+
+docs:
+  content: The standard error body, which every error response uses (ErrorBody in the spec).
+  type: text/markdown

@@ -1,0 +1,10 @@
+info:
+  name: health
+  type: folder
+
+request:
+  auth: inherit
+
+docs:
+  content: Liveness and version
+  type: text/markdown

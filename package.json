@@ -13,7 +13,9 @@
     "typecheck": "pnpm -r --if-present typecheck",
     "build": "cargo build --workspace && pnpm -r --if-present build",
     "e2e": "pnpm --filter web --if-present e2e",
-    "format": "cargo fmt --all && prettier --write ."
+    "format": "cargo fmt --all && prettier --write .",
+    "bruno:check": "node scripts/bruno-check.mjs",
+    "bruno:run": "cd apps/api/bruno && pnpm dlx @usebruno/cli@4.1.0 run --env local"
   },
   "devDependencies": {
     "prettier": "3.10.1"
