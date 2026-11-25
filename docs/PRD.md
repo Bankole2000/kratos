@@ -1,6 +1,6 @@
 # Product Requirements Document
 
-Status: Approved | Owner: @Bankole2000 | Version: 1.1 | Last updated: 2026-11-25
+Status: Approved | Owner: @Bankole2000 | Version: 1.2 | Last updated: 2026-11-25
 References: platform-core.md (project overview, guiding principles and SDK specification)
 
 ## Vision and problem
@@ -133,6 +133,7 @@ Later phases from platform-core.md section 5. Their IDs are reserved there.
 - Signed desktop and mobile builds need an Apple Developer account, a Google Play account and a Windows code-signing certificate, which can take days to weeks to obtain.
 - Package names on npm, pub.dev, crates.io and PyPI may be taken (D6).
 - Nuxt 3 reached end of maintenance in July 2026, so apps/web uses Nuxt 4 (OD-005).
+- Vuetify 3.x has stopped at 3.9.7, so the shared UI uses Vuetify 4 (OD-008).
 - Every consumer app depends on Platform Core; if it is down, SDKs must degrade quietly (NFR-006) and apps must keep working.
 
 ## Open decisions
@@ -144,6 +145,7 @@ Decisions D1 to D8 are tracked in platform-core.md section 8 (D2 is decided: SQL
 - OD-005: Nuxt version for `apps/web`. **Decided 2026-11-25: Nuxt 4**, since Nuxt 3 no longer gets security fixes. This replaces "Nuxt 3" in platform-core.md section 2.
 - OD-006: License. **Decided (2026-11-25 project setup review): MIT** for the whole repository, SDKs included. See LICENSE.
 - OD-007: How are the parts of a product (web app, mobile app, server, and so on) tracked? **Decided 2026-11-25: as components**, one level under a project (FR-036 to FR-042), rather than as separate projects (which would split burn, status and the portfolio overview) or nested subprojects (more complexity than one owner needs). A key's component is optional and comes from the key, so apps cannot mislabel their events; the platform is reported by the SDK. Components have only `active` and `retired` status; the lifecycle stays on the project.
+- OD-008: Vuetify version for `packages/ui` (and so for `apps/web` and `apps/app`). **Decided 2026-11-25: Vuetify 4** (4.3.x), since 3.x has stopped at 3.9.7. This replaces "Vuetify 3" in platform-core.md section 2, DESIGN.md and TECHNICAL.md.
 
 ## Approval
-Approved by @Bankole2000 on 2026-11-25, revision 1.0, to start building. Approved as drafted without an item-by-item review; sections are revisited when the milestone that needs them is planned, and open TBDs stay open decisions. Revision 1.1 adds project components (PRD OD-007), approved as drafted by @Bankole2000 on 2026-11-25.
+Approved by @Bankole2000 on 2026-11-25, revision 1.0, to start building. Approved as drafted without an item-by-item review; sections are revisited when the milestone that needs them is planned, and open TBDs stay open decisions. Revision 1.1 adds project components (PRD OD-007), approved as drafted by @Bankole2000 on 2026-11-25. Revision 1.2 records the Vuetify 4 decision (OD-008); its review is pending.

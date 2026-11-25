@@ -1,6 +1,6 @@
 # Product Design
 
-Status: Approved | Owner: @Bankole2000 | Version: 1.1 | Last updated: 2026-11-25
+Status: Approved | Owner: @Bankole2000 | Version: 1.2 | Last updated: 2026-11-25
 References: PRD.md
 
 ## Platforms and navigation
@@ -50,7 +50,7 @@ Hierarchy:
 | UI-014 | Components tab | All | FR-036, FR-037 | List of components with kind icon, status, live URL and last ping; add and edit (name, slug suggested from the name, kind, description, live URL); retire and restore; "show retired"; duplicate slug shown on the slug field; empty (explains that components are optional and when to use them) |
 
 ## Visual guidelines
-- Vuetify 3 components and theming, with light and dark themes following the system setting. Brand colours and typography TBD.
+- Vuetify 4 (PRD OD-008) components and theming, with light and dark themes following the system setting. Brand colours and typography TBD.
 - Theme tokens (colours, spacing, typography) live in `packages/ui` and are used by both web and app; no separate design-tokens package in the MVP.
 - Mobile first: every screen is designed at 360 px wide first (NFR-007). Tables become lists of cards on narrow screens.
 - Money is shown with its currency code and two decimals; converted amounts are marked as converted.
@@ -66,4 +66,4 @@ None yet. Wireframes TBD.
 - D4: which web pages are public (affects SSR and SEO work in `apps/web`).
 - Brand colours, typography and logo.
 - Minimum desktop and mobile OS versions.
-Approval: Approved by @Bankole2000 on 2026-11-25, revision 1.0, to start building. Approved as drafted without an item-by-item review; sections are revisited when the milestone that needs them is planned, and open TBDs stay open decisions. Revision 1.1 adds project components (PRD OD-007), approved as drafted by @Bankole2000 on 2026-11-25.
+Approval: Approved by @Bankole2000 on 2026-11-25, revision 1.0, to start building. Approved as drafted without an item-by-item review; sections are revisited when the milestone that needs them is planned, and open TBDs stay open decisions. Revision 1.1 adds project components (PRD OD-007), approved as drafted by @Bankole2000 on 2026-11-25. Revision 1.2 records the Vuetify 4 decision (PRD OD-008); its review is pending.
