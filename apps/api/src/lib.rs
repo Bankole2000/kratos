@@ -2,6 +2,7 @@
 //! integration tests in `tests/` can build the same router without opening a port.
 
 pub mod config;
+pub mod db;
 pub mod error;
 pub mod health;
 pub mod logging;
@@ -13,21 +14,30 @@ use axum::Router;
 use axum::middleware;
 use axum::response::{IntoResponse, Response};
 use axum::routing::get;
+use sqlx::PgPool;
 use tower_http::catch_panic::CatchPanicLayer;
 
 use crate::error::ApiError;
 
+/// Shared state handed to handlers through Axum's `State` extractor. Cloning is cheap:
+/// `PgPool` is a handle to one shared pool.
+#[derive(Clone)]
+pub struct AppState {
+    pub db: PgPool,
+}
+
 /// Builds the full router: the routes plus the shared layers.
-pub fn app() -> Router {
-    with_layers(routes())
+pub fn app(state: AppState) -> Router {
+    with_layers(routes(state))
 }
 
 /// Every route the api serves. Unversioned routes (only `/health`) sit at the top level;
-/// everything else goes under `/v1`.
-pub fn routes() -> Router {
+/// everything else goes under `/v1`. `with_state` gives every handler access to `state`.
+pub fn routes(state: AppState) -> Router {
     Router::new()
         .route("/health", get(health::health))
         .nest("/v1", v1_routes())
+        .with_state(state)
 }
 
 /// Adds the error fallbacks and middleware to `router`. Layers run outside-in: the request
@@ -42,7 +52,7 @@ pub fn with_layers(router: Router) -> Router {
 }
 
 /// Every versioned endpoint is added here. Empty until the first feature task.
-fn v1_routes() -> Router {
+fn v1_routes() -> Router<AppState> {
     Router::new()
 }
 

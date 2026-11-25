@@ -1,5 +1,6 @@
 //! Integration tests for the api skeleton (TASK-002, TC-036 in part). They call the router
-//! directly, without opening a port.
+//! directly, without opening a port, and need no database: the pool points at an address
+//! where nothing listens and is never used by these routes (except `/health`, see below).
 
 use axum::Router;
 use axum::body::Body;
@@ -25,16 +26,25 @@ async fn send(app: Router, request: Request<Body>) -> (StatusCode, Option<String
     (status, request_id, body)
 }
 
+/// The app with a lazy pool pointing at a closed port (127.0.0.1:1), so no database is
+/// needed and any database call fails like a stopped Postgres would.
+fn app() -> Router {
+    let pool = api::db::connect_lazy("postgres://postgres@127.0.0.1:1/unreachable").unwrap();
+    api::app(api::AppState { db: pool })
+}
+
 fn get_request(path: &str) -> Request<Body> {
     Request::builder().uri(path).body(Body::empty()).unwrap()
 }
 
+// `/health` with the database up is tested in `tests/database.rs`.
 #[tokio::test]
-async fn health_returns_ok_and_version() {
-    let (status, request_id, body) = send(api::app(), get_request("/health")).await;
+async fn health_reports_database_down_without_failing() {
+    let (status, request_id, body) = send(app(), get_request("/health")).await;
 
-    assert_eq!(status, StatusCode::OK);
-    assert_eq!(body["status"], "ok");
+    assert_eq!(status, StatusCode::OK, "health always answers 200");
+    assert_eq!(body["status"], "degraded");
+    assert_eq!(body["database"], "down");
     assert_eq!(body["version"], env!("CARGO_PKG_VERSION"));
     assert!(request_id.is_some(), "every response carries X-Request-Id");
 }
@@ -45,7 +55,7 @@ async fn incoming_request_id_is_returned() {
         .uri("/health")
         .header("x-request-id", "abc-123")
         .body(Body::empty());
-    let (_, request_id, _) = send(api::app(), request.unwrap()).await;
+    let (_, request_id, _) = send(app(), request.unwrap()).await;
 
     assert_eq!(request_id.as_deref(), Some("abc-123"));
 }
@@ -57,7 +67,7 @@ async fn invalid_incoming_request_id_is_replaced() {
         .uri("/health")
         .header("x-request-id", &too_long)
         .body(Body::empty());
-    let (_, request_id, _) = send(api::app(), request.unwrap()).await;
+    let (_, request_id, _) = send(app(), request.unwrap()).await;
 
     let request_id = request_id.unwrap();
     assert_ne!(request_id, too_long);
@@ -66,7 +76,7 @@ async fn invalid_incoming_request_id_is_replaced() {
 
 #[tokio::test]
 async fn unknown_route_returns_standard_404_body() {
-    let (status, request_id, body) = send(api::app(), get_request("/nope")).await;
+    let (status, request_id, body) = send(app(), get_request("/nope")).await;
 
     assert_eq!(status, StatusCode::NOT_FOUND);
     assert_eq!(body["error"]["code"], "not_found");
@@ -76,7 +86,7 @@ async fn unknown_route_returns_standard_404_body() {
 
 #[tokio::test]
 async fn unknown_v1_route_returns_standard_404_body() {
-    let (status, _, body) = send(api::app(), get_request("/v1/projects")).await;
+    let (status, _, body) = send(app(), get_request("/v1/projects")).await;
 
     assert_eq!(status, StatusCode::NOT_FOUND);
     assert_eq!(body["error"]["code"], "not_found");
@@ -89,7 +99,7 @@ async fn wrong_method_returns_standard_405_body() {
         .uri("/health")
         .body(Body::empty())
         .unwrap();
-    let (status, request_id, body) = send(api::app(), request).await;
+    let (status, request_id, body) = send(app(), request).await;
 
     assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
     assert_eq!(body["error"]["code"], "method_not_allowed");
@@ -102,7 +112,9 @@ async fn panic_returns_500_without_internal_details() {
     async fn boom() -> &'static str {
         panic!("secret internal detail")
     }
-    let app = api::with_layers(api::routes().route("/boom", get(boom)));
+    let pool = api::db::connect_lazy("postgres://postgres@127.0.0.1:1/unreachable").unwrap();
+    let routes = api::routes(api::AppState { db: pool }).route("/boom", get(boom));
+    let app = api::with_layers(routes);
 
     let (status, request_id, body) = send(app, get_request("/boom")).await;
 
