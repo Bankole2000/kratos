@@ -21,16 +21,16 @@ Only M0 is planned in detail. Later milestones are broken down once the previous
 
 | Task key | Outcome | App | Requirement IDs | Tests | Milestone | Depends on | Priority | Issue |
 |---|---|---|---|---|---|---|---|---|
-| TASK-001 | Root workspaces: Cargo workspace, pnpm workspace, toolchain versions pinned (`rust-toolchain.toml`, `packageManager`, `.nvmrc`), root scripts, `.gitignore` additions | repo | — | TC-000 | M0 | None | High | TBD |
-| TASK-002 | api skeleton: Axum server with `GET /health`, configuration from environment, structured logging, request IDs and the standard error body | api | NFR-001 | TC-000, TC-036 | M0 | TASK-001 | High | TBD |
-| TASK-003 | Local Postgres (docker compose), `sqlx migrate` with a first migration, `cargo sqlx prepare` data committed | api | — | TC-000 | M0 | TASK-002 | High | TBD |
-| TASK-004 | OpenAPI generated with `utoipa` and written to `openapi/openapi.json`; a check that fails when the committed file is out of date | api | — | TC-000 | M0 | TASK-002 | High | TBD |
-| TASK-005 | `packages/types` Rust crate with the first shared types, used by api | packages | — | TC-000 | M0 | TASK-001 | Medium | TBD |
-| TASK-006 | `packages/api-client-ts` generated from the spec (ADR-010 decided in this task) | packages | — | TC-000 | M0 | TASK-004 | High | TBD |
-| TASK-007 | `packages/ui` with Vuetify theme, layout shell (side rail and bottom bar) and a status screen that calls `/health` through the client | packages | FR-035 | TC-000 | M0 | TASK-006 | High | TBD |
-| TASK-008 | `apps/web` Nuxt 4 shell rendering the shared status screen | web | FR-035 | TC-000 | M0 | TASK-007 | High | TBD |
-| TASK-009 | `apps/app` Tauri 2 + Vue + Vite shell rendering the shared status screen on desktop; Android and iOS projects initialized and building in debug | app | FR-035 | TC-000 | M0 | TASK-007 | High | TBD |
-| TASK-010 | CI: rename and adapt `ci.yml.example` and `dependabot.yml.example` for api, web, app, packages and the generated-file checks; fill in the README Commands table | repo | — | TC-000 | M0 | TASK-003, TASK-004, TASK-008, TASK-009 | High | TBD |
+| TASK-001 | Root workspaces: Cargo workspace, pnpm workspace, toolchain versions pinned (`rust-toolchain.toml`, `packageManager`, `.nvmrc`), root scripts, `.gitignore` additions | repo | — | TC-000 | M0 | None | High | #2 |
+| TASK-002 | api skeleton: Axum server with `GET /health`, configuration from environment, structured logging, request IDs and the standard error body | api | NFR-001 | TC-000, TC-036 | M0 | TASK-001 | High | #3 |
+| TASK-003 | Local Postgres (docker compose), `sqlx migrate` with a first migration, `cargo sqlx prepare` data committed | api | — | TC-000 | M0 | TASK-002 | High | #4 |
+| TASK-004 | OpenAPI generated with `utoipa` and written to `openapi/openapi.json`; a check that fails when the committed file is out of date | api | — | TC-000 | M0 | TASK-002 | High | #5 |
+| TASK-005 | `packages/types` Rust crate with the first shared types, used by api | packages | — | TC-000 | M0 | TASK-001 | Medium | #6 |
+| TASK-006 | `packages/api-client-ts` generated from the spec (ADR-010 decided in this task) | packages | — | TC-000 | M0 | TASK-004 | High | #7 |
+| TASK-007 | `packages/ui` with Vuetify theme, layout shell (side rail and bottom bar) and a status screen that calls `/health` through the client | packages | FR-035 | TC-000 | M0 | TASK-006 | High | #8 |
+| TASK-008 | `apps/web` Nuxt 4 shell rendering the shared status screen | web | FR-035 | TC-000 | M0 | TASK-007 | High | #9 |
+| TASK-009 | `apps/app` Tauri 2 + Vue + Vite shell rendering the shared status screen on desktop; Android and iOS projects initialized and building in debug | app | FR-035 | TC-000 | M0 | TASK-007 | High | #10 |
+| TASK-010 | CI: rename and adapt `ci.yml.example` and `dependabot.yml.example` for api, web, app, packages and the generated-file checks; fill in the README Commands table | repo | — | TC-000 | M0 | TASK-003, TASK-004, TASK-008, TASK-009 | High | #11 |
 
 ## Planning rules
 - Plan only the next useful milestone in detail; split large tasks.
