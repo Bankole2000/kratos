@@ -1,0 +1,126 @@
+# Rename to release.yml after replacing the placeholder steps. Add or remove app jobs
+# to match apps/; job names and environment names use the app names.
+#
+# How it works:
+# - A human pushes a tag `<app>-vX.Y.Z` (see docs/DEPLOYMENT.md, Release checklist).
+#   "resolve" reads the app name from the tag; only that app's jobs run.
+# - Each app's job uses a GitHub deployment environment (Settings → Environments),
+#   e.g. "release-web". Put that app's deploy credentials and signing material in the
+#   environment's secrets, and set "Required reviewers" to the release owner, so the
+#   job waits for human approval and secrets never reach PR builds or agents.
+# - Full native builds, signing, notarization and store uploads happen only here.
+#   macOS runners are used only for jobs that need them (iOS, macOS desktop), because
+#   they are billed at a much higher rate than Linux.
+#
+# Check for newer action major versions, and consider pinning actions to a full
+# commit SHA.
+name: Release
+
+on:
+  push:
+    tags: ['*-v[0-9]*.[0-9]*.[0-9]*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false   # never cancel a release half-way
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      app: ${{ steps.parse.outputs.app }}
+      version: ${{ steps.parse.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: parse
+        env:
+          TAG: ${{ github.ref_name }}   # passed via env, never interpolated into the script
+        run: |
+          if [[ ! "$TAG" =~ ^([a-z][a-z0-9-]*)-v([0-9]+\.[0-9]+\.[0-9]+.*)$ ]]; then
+            echo "Tag '$TAG' is not of the form <app>-vX.Y.Z"; exit 1
+          fi
+          app="${BASH_REMATCH[1]}"; version="${BASH_REMATCH[2]}"
+          if [ ! -d "apps/$app" ]; then echo "No app folder apps/$app"; exit 1; fi
+          if ! grep -q "## \[$version\]" "apps/$app/CHANGELOG.md"; then
+            echo "apps/$app/CHANGELOG.md has no entry for $version"; exit 1
+          fi
+          echo "app=$app" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  # ── Web client: build and deploy ─────────────────────────────
+  web:
+    needs: resolve
+    if: needs.resolve.outputs.app == 'web'
+    runs-on: ubuntu-latest
+    environment: release-web
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Fail until configured
+        run: |
+          echo "Build the web app and deploy it to production, then smoke test."
+          exit 1
+
+  # ── Server: build, migrate, deploy ───────────────────────────
+  api:
+    needs: resolve
+    if: needs.resolve.outputs.app == 'api'
+    runs-on: ubuntu-latest
+    environment: release-api
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - name: Fail until configured
+        run: |
+          echo "Build the server artifact, run backward-compatible migrations, deploy, smoke test."
+          exit 1
+
+  # ── Mobile: one job per platform ─────────────────────────────
+  mobile-android:
+    needs: resolve
+    if: needs.resolve.outputs.app == 'mobile'
+    runs-on: ubuntu-latest
+    environment: release-mobile
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - name: Fail until configured
+        run: |
+          echo "Build a signed Android bundle (keystore from environment secrets) and upload it to the internal testing track."
+          exit 1
+
+  mobile-ios:
+    needs: resolve
+    if: needs.resolve.outputs.app == 'mobile'
+    runs-on: macos-latest   # required for iOS; higher cost
+    environment: release-mobile
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - name: Fail until configured
+        run: |
+          echo "Build and sign the iOS app (certificates from environment secrets) and upload it to TestFlight."
+          exit 1
+
+  # ── Desktop: one build per operating system ──────────────────
+  desktop:
+    needs: resolve
+    if: needs.resolve.outputs.app == 'desktop'
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]   # drop the platforms you don't ship
+    runs-on: ${{ matrix.os }}
+    environment: release-desktop
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - name: Fail until configured
+        run: |
+          echo "Build the desktop app for ${{ matrix.os }}, sign it (Windows code signing / macOS Developer ID),"
+          echo "notarize it on macOS, and publish it to the update channel as a draft for the release owner."
+          exit 1

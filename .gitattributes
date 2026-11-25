@@ -1,0 +1,30 @@
+# Normalize line endings to LF in the repository; check out natively where it matters.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+gradlew text eol=lf
+*.sh text eol=lf
+
+# Lockfiles: treat as generated so diffs stay readable in PRs.
+pnpm-lock.yaml linguist-generated=true -diff
+package-lock.json linguist-generated=true -diff
+yarn.lock linguist-generated=true -diff
+Podfile.lock linguist-generated=true
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.jar binary
+*.aab binary
+*.apk binary
+*.ipa binary

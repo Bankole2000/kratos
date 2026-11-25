@@ -1,0 +1,1693 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Project Doc Reviewer</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  color-scheme:light;
+  --bg:#f8f8f7;--surface:#fff;--border:#e4e2de;--border-strong:#c8c5bf;
+  --fg:#1a1917;--fg-muted:#6b6860;--fg-faint:#a09d98;
+  --accent:#2563eb;--accent-bg:#eff6ff;
+  --d0:#16a34a;--d0-bg:#f0fdf4;
+  --d1:#dc2626;--d1-bg:#fef2f2;
+  --d2:#d97706;--d2-bg:#fffbeb;
+  --d3:#7c3aed;--d3-bg:#f5f3ff;
+  --tag-bg:#f0eeeb;
+  --shadow:0 1px 3px rgba(0,0,0,.08);--shadow-lg:0 4px 16px rgba(0,0,0,.10);
+  --radius:8px;--font:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono',ui-monospace,monospace;
+}
+@media(prefers-color-scheme:dark){:root{
+  color-scheme:dark;--bg:#141412;--surface:#1e1d1b;--border:#2e2c29;--border-strong:#3d3b37;
+  --fg:#f0ede8;--fg-muted:#9b9890;--fg-faint:#6b6860;
+  --accent:#3b82f6;--accent-bg:#172035;
+  --d0:#22c55e;--d0-bg:#0d2318;--d1:#f87171;--d1-bg:#2a1212;--d2:#fbbf24;--d2-bg:#251d08;--d3:#a78bfa;--d3-bg:#1e1535;
+  --tag-bg:#2a2825;--shadow:0 1px 3px rgba(0,0,0,.3);--shadow-lg:0 4px 20px rgba(0,0,0,.4);
+}}
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font-family:var(--font);background:var(--bg);color:var(--fg);font-size:14px;line-height:1.6;display:flex;flex-direction:column}
+#app{flex:1;display:flex;flex-direction:column;min-height:0}
+[hidden]{display:none !important}
+button{font-family:var(--font)}
+
+/* Upload */
+#upload-screen{flex:1;display:flex;align-items:center;justify-content:center;padding:32px 16px}
+.upload-card{background:var(--surface);border:1.5px dashed var(--border-strong);border-radius:16px;padding:44px 40px;text-align:center;max-width:580px;width:100%;box-shadow:var(--shadow-lg);transition:border-color .15s,background .15s}
+.upload-card.drag-over{border-color:var(--accent);background:var(--accent-bg)}
+.upload-icon{font-size:40px;margin-bottom:12px}
+.upload-card h1{font-size:22px;font-weight:600;margin:0 0 8px}
+.upload-card p{color:var(--fg-muted);margin:0 auto 22px;font-size:14px;max-width:420px}
+.upload-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:14px}
+.btn-primary{background:var(--accent);color:#fff;border:none;border-radius:var(--radius);padding:10px 22px;font-size:14px;font-weight:500;cursor:pointer}
+.btn-primary:hover{opacity:.88}
+.btn-secondary{background:var(--surface);color:var(--fg);border:1px solid var(--border-strong);border-radius:var(--radius);padding:10px 22px;font-size:14px;font-weight:500;cursor:pointer}
+.btn-secondary:hover{background:var(--tag-bg)}
+.format-hint{font-size:12px;color:var(--fg-faint);font-family:var(--mono)}
+.reviewer-row{margin-top:22px;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap}
+.reviewer-row label{font-size:13px;color:var(--fg-muted);font-weight:500}
+.reviewer-row input{width:220px}
+.capability-note{margin-top:14px;font-size:12px;color:var(--fg-muted)}
+.hidden-input{display:none}
+
+/* Queue */
+#queue-screen{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.queue-topbar,.topbar,.complete-header{background:var(--surface);border-bottom:1px solid var(--border);padding:8px 20px;display:flex;align-items:center;gap:10px;min-height:52px;flex-wrap:wrap;flex-shrink:0}
+.queue-topbar h1{font-size:15px;font-weight:600;margin:0;flex:1}
+.queue-sub{font-size:12px;color:var(--fg-muted);font-weight:400;margin-left:8px}
+.btn-ghost{background:none;border:1px solid var(--border);border-radius:6px;padding:5px 12px;font-size:12px;font-weight:500;color:var(--fg);cursor:pointer;white-space:nowrap}
+.btn-ghost:hover{background:var(--tag-bg)}
+.btn-ghost.btn-add{border-color:var(--d3);color:var(--d3);background:var(--d3-bg)}
+.btn-ghost.btn-strong{border-color:var(--accent);color:var(--accent);background:var(--accent-bg)}
+.queue-body{flex:1;overflow-y:auto;padding:24px 24px 40px}
+.queue-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px;max-width:960px;margin:0 auto}
+.doc-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);padding:18px;display:flex;flex-direction:column;gap:10px}
+.doc-card.status-complete{border-color:var(--d0)}
+.doc-card.status-inprogress{border-color:var(--d2)}
+.doc-card.setup-card{border-style:dashed;border-width:1.5px}
+.doc-card.setup-card.status-notstarted{border-color:var(--accent)}
+.doc-card-top{display:flex;align-items:flex-start;gap:10px}
+.doc-card-icon{font-size:26px;flex-shrink:0;line-height:1}
+.doc-card-meta{flex:1;min-width:0}
+.doc-card-name{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.doc-card-type{font-size:11px;color:var(--fg-muted);margin-top:2px}
+.doc-card-chips{display:flex;flex-wrap:wrap;gap:6px}
+.doc-card-status{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--fg-muted)}
+.doc-card-progress{flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.doc-card-progress-fill{height:100%;border-radius:2px;background:var(--accent);transition:width .3s}
+.status-complete .doc-card-progress-fill{background:var(--d0)}
+.doc-card-pct{font-size:11px;font-variant-numeric:tabular-nums;color:var(--fg-faint);flex-shrink:0}
+.doc-card-note{font-size:11px;color:var(--d2)}
+.verdict-row{display:flex;align-items:center;gap:8px}
+.verdict-row label{font-size:12px;color:var(--fg-muted);flex-shrink:0}
+.btn-review{width:100%;padding:8px;border-radius:var(--radius);border:none;font-size:13px;font-weight:500;cursor:pointer}
+.btn-review:hover{opacity:.85}
+.btn-review:disabled{opacity:.4;cursor:not-allowed}
+.btn-review-start{background:var(--accent);color:#fff}
+.btn-review-continue{background:var(--d2-bg);color:var(--d2);border:1px solid var(--d2)}
+.btn-review-revisit{background:var(--d0-bg);color:var(--d0);border:1px solid var(--d0)}
+.chip{font-size:11px;padding:2px 8px;border-radius:12px;background:var(--tag-bg);color:var(--fg-muted);font-family:var(--mono);white-space:nowrap}
+.chip-ph{background:var(--d1-bg);color:var(--d1)}
+.chip-ok{background:var(--d0-bg);color:var(--d0)}
+.chip-tbd{background:var(--d2-bg);color:var(--d2)}
+.chip-added{background:var(--d3-bg);color:var(--d3)}
+.save-indicator{font-size:11px;color:var(--fg-faint);white-space:nowrap}
+
+/* Review */
+#review-screen{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar-title{font-weight:600;font-size:14px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:60px}
+.topbar-progress{font-size:12px;color:var(--fg-muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.type-badge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:12px;white-space:nowrap;flex-shrink:0}
+.progress-track{height:3px;background:var(--border);flex-shrink:0}
+.progress-fill{height:100%;background:var(--accent);transition:width .3s}
+.review-body{display:flex;flex:1;overflow:hidden;min-height:0}
+.sidebar{width:240px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;background:var(--surface);padding:10px 6px;display:flex;flex-direction:column;gap:1px}
+.sidebar-section{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--fg-faint);padding:10px 8px 4px}
+.sb-item{display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:6px;cursor:pointer;font-size:12px;color:var(--fg-muted);line-height:1.4}
+.sb-item:hover{background:var(--tag-bg);color:var(--fg)}
+.sb-item.active{background:var(--accent-bg);color:var(--accent);font-weight:500}
+.sb-item.d0{color:var(--d0)}.sb-item.d1{color:var(--d1)}.sb-item.d2{color:var(--d2)}.sb-item.d3{color:var(--d3)}
+.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;background:var(--border-strong)}
+.sb-item.active .dot{background:var(--accent)}
+.d0 .dot{background:var(--d0)}.d1 .dot{background:var(--d1)}.d2 .dot{background:var(--d2)}.d3 .dot{background:var(--d3)}
+.sb-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.sb-id{font-family:var(--mono);font-size:10px;margin-right:4px}
+.sb-ph{color:var(--d1);font-family:var(--mono);font-size:10px;flex-shrink:0}
+.main-area{flex:1;overflow-y:auto;padding:24px 24px 40px;min-width:0}
+.item-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);max-width:760px;margin:0 auto;overflow:hidden}
+.item-header{padding:16px 20px 14px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:10px}
+.item-badge{background:var(--tag-bg);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600;font-family:var(--mono);color:var(--fg-muted);white-space:nowrap;flex-shrink:0;margin-top:2px}
+.item-section{font-size:11px;color:var(--fg-faint);font-weight:500;line-height:1.5;margin-top:2px}
+.item-title{font-size:16px;font-weight:600;line-height:1.4;margin:4px 0 0}
+.item-body{padding:16px 20px;border-bottom:1px solid var(--border)}
+.item-content{font-size:14px;line-height:1.65;white-space:pre-wrap;word-break:break-word}
+.kv{display:grid;grid-template-columns:minmax(100px,170px) 1fr;gap:6px 14px;white-space:normal}
+.kv .k{color:var(--fg-muted);font-size:12px;font-weight:500;padding-top:2px}
+.kv .v{white-space:pre-wrap;word-break:break-word}
+mark.ph{background:var(--d1-bg);color:var(--d1);outline:1px solid var(--d1);border-radius:4px;padding:0 3px;font-family:var(--mono);font-size:12px}
+mark.ph.ok{background:var(--d0-bg);color:var(--d0);outline-color:var(--d0)}
+mark.tbd{background:var(--d2-bg);color:var(--d2);border-radius:4px;padding:0 3px;font-weight:600}
+.item-meta-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.fill-panel{padding:14px 20px 16px;border-bottom:1px solid var(--border);background:var(--bg);display:flex;flex-direction:column;gap:8px}
+.fill-panel-head{display:flex;align-items:baseline;gap:8px}
+.fill-panel-head .field-label{margin:0}
+.fill-panel-head .hint{font-size:11px;color:var(--fg-faint)}
+.fill-row{display:grid;grid-template-columns:minmax(150px,260px) 1fr;gap:10px;align-items:center}
+.fill-row .fill-label{font-size:12px;color:var(--fg-muted);word-break:break-word}
+.fill-row code{font-family:var(--mono);font-size:11px;color:var(--d1)}
+.decision-row{padding:14px 20px;display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border)}
+.btn-d{display:flex;align-items:center;gap:5px;padding:7px 14px;border-radius:var(--radius);border:1.5px solid transparent;font-size:13px;font-weight:500;cursor:pointer;flex:1;justify-content:center;min-width:80px}
+.btn-d:active{transform:scale(.97)}
+.btn-d:hover{opacity:.82}
+.btn-d0{background:var(--d0-bg);border-color:var(--d0);color:var(--d0)}
+.btn-d1{background:var(--d1-bg);border-color:var(--d1);color:var(--d1)}
+.btn-d2{background:var(--d2-bg);border-color:var(--d2);color:var(--d2)}
+.btn-d0.sel{background:var(--d0);color:#fff}
+.btn-d1.sel{background:var(--d1);color:#fff}
+.btn-d2.sel{background:var(--d2);color:#fff}
+.expand-panel{padding:14px 20px 16px;display:flex;flex-direction:column;gap:10px;border-bottom:1px solid var(--border)}
+.field-label{font-size:12px;font-weight:500;color:var(--fg-muted);margin-bottom:3px}
+.field-textarea,.field-input,.field-select{width:100%;font-family:var(--font);font-size:13px;padding:8px 11px;border:1px solid var(--border-strong);border-radius:var(--radius);background:var(--bg);color:var(--fg)}
+.fill-panel .field-input{background:var(--surface)}
+.field-textarea{line-height:1.6;resize:vertical;min-height:68px}
+.field-textarea:focus,.field-input:focus,.field-select:focus{outline:none;border-color:var(--accent)}
+.field-input.invalid{border-color:var(--d1)}
+.nav-footer{padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.btn-nav{padding:7px 16px;border-radius:var(--radius);border:1px solid var(--border);font-size:13px;font-weight:500;color:var(--fg);background:var(--surface);cursor:pointer}
+.btn-nav:hover{background:var(--tag-bg)}
+.btn-nav:disabled{opacity:.4;cursor:not-allowed}
+.btn-nav-next{background:var(--accent);color:#fff;border-color:transparent}
+.nav-counter{font-size:12px;color:var(--fg-muted);font-variant-numeric:tabular-nums}
+
+/* Setup */
+#setup-screen{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.setup-body{flex:1;overflow-y:auto;padding:24px 24px 48px}
+.setup-form{max-width:780px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.setup-intro{font-size:13px;color:var(--fg-muted)}
+.setup-section{background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);padding:18px 20px}
+.setup-section h2{font-size:14px;font-weight:600;margin:0 0 2px}
+.setup-section .hint{font-size:12px;color:var(--fg-muted);margin:0 0 14px}
+.setup-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px}
+.setup-field.full{grid-column:1/-1}
+.req{color:var(--d1)}
+.field-error{font-size:11px;color:var(--d1);margin-top:3px;min-height:0}
+.field-source{font-size:11px;color:var(--d0);margin-top:3px}
+.list-row{display:grid;grid-template-columns:1fr 1fr 1fr 28px;gap:8px;align-items:start;margin-bottom:8px}
+.list-row.two{grid-template-columns:1fr 1fr 28px}
+.list-head{font-size:11px;color:var(--fg-muted);font-weight:500}
+.list-empty{font-size:12px;color:var(--fg-faint);margin-bottom:8px}
+
+/* Add panel */
+#add-panel{position:fixed;top:0;right:0;bottom:0;width:360px;background:var(--surface);border-left:1px solid var(--border);box-shadow:-4px 0 20px rgba(0,0,0,.12);z-index:100;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s ease}
+#add-panel.open{transform:translateX(0)}
+.add-panel-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.add-panel-header h2{font-size:14px;font-weight:600;margin:0;flex:1}
+.btn-close-panel{background:none;border:none;color:var(--fg-faint);font-size:20px;cursor:pointer;padding:0;line-height:1}
+.add-panel-body{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:14px}
+.add-panel-footer{padding:16px 20px;border-top:1px solid var(--border)}
+.btn-add-submit{width:100%;padding:10px;border:none;border-radius:var(--radius);background:var(--d3);color:#fff;font-size:14px;font-weight:600;cursor:pointer}
+.cat-row{display:flex;gap:8px;align-items:flex-end}
+.cat-row .fgroup{flex:1}
+.btn-new-cat{padding:8px 12px;border-radius:var(--radius);border:1px dashed var(--border-strong);background:transparent;color:var(--fg-muted);font-size:12px;cursor:pointer;white-space:nowrap}
+.added-items-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--d3);padding:12px 20px 6px;border-top:1px solid var(--border)}
+.added-item-row{display:flex;align-items:flex-start;gap:8px;padding:8px 20px;font-size:12px;border-bottom:1px solid var(--border)}
+.added-item-body{flex:1;min-width:0}
+.added-item-title{font-weight:500;word-break:break-word}
+.added-item-cat{color:var(--fg-faint);font-size:11px}
+.added-item-details{color:var(--fg-muted);font-size:11px;margin-top:3px;white-space:pre-wrap}
+.btn-rm{background:none;border:none;color:var(--fg-faint);cursor:pointer;font-size:16px;padding:6px 0;line-height:1}
+.btn-rm:hover{color:var(--d1)}
+#add-overlay{position:fixed;inset:0;background:rgba(0,0,0,.18);z-index:99;display:none}
+#add-overlay.open{display:block}
+
+/* Export */
+#complete-screen{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.complete-header strong{font-size:15px}
+.complete-stats{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.complete-body{flex:1;overflow-y:auto;padding:24px 24px 40px}
+.export-intro{max-width:820px;margin:0 auto 16px;font-size:13px;color:var(--fg-muted)}
+.export-actions{max-width:820px;margin:0 auto 16px;display:flex;gap:10px;flex-wrap:wrap}
+.output-section{background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);max-width:820px;margin:0 auto 16px;overflow:hidden}
+.output-section-header{display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border);gap:10px;flex-wrap:wrap}
+.output-section-header .name{font-size:13px;font-weight:600;flex:1;font-family:var(--mono)}
+.output-status{font-size:12px;color:var(--fg-muted)}
+.output-status.ok{color:var(--d0)}
+.output-status.err{color:var(--d1)}
+.output-pre{padding:16px;margin:0;font-family:var(--mono);font-size:12px;line-height:1.6;white-space:pre-wrap;word-break:break-word;background:var(--bg);max-height:45vh;overflow-y:auto}
+.empty-note{max-width:820px;margin:0 auto;color:var(--fg-muted);text-align:center;padding:40px 0}
+
+@media(max-width:640px){
+  .sidebar{display:none}
+  .upload-card{padding:32px 20px}
+  .main-area,.add-panel-body,.queue-body,.complete-body,.setup-body{padding:16px}
+  .btn-d{font-size:12px;padding:6px 10px;min-width:70px}
+  #add-panel{width:100%}
+  .setup-grid,.fill-row{grid-template-columns:1fr}
+  .list-row{grid-template-columns:1fr 1fr 28px}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- Upload -->
+<div id="upload-screen">
+  <div class="upload-card" id="drop-zone">
+    <div class="upload-icon">📂</div>
+    <h1>Project Doc Reviewer</h1>
+    <p>Open your project folder to fill in the project setup and review <code>README.md</code>, <code>AGENTS.md</code> and <code>docs/*.md</code> item by item. Progress is saved in this browser. Finished reviews are saved to <code>docs/reviews/</code> for the agent to apply.</p>
+    <div class="upload-actions">
+      <button class="btn-primary" id="open-folder-btn">Open project folder</button>
+      <button class="btn-secondary" id="open-files-btn">Select .md files</button>
+    </div>
+    <div class="format-hint">or drag &amp; drop .md files here</div>
+    <div class="reviewer-row">
+      <label for="reviewer-input">Reviewer name</label>
+      <input class="field-input" id="reviewer-input" placeholder="Your name">
+    </div>
+    <div class="capability-note" id="capability-note"></div>
+    <input type="file" class="hidden-input" id="file-input" accept=".md,.markdown,.txt" multiple>
+    <input type="file" class="hidden-input" id="folder-input" webkitdirectory>
+  </div>
+</div>
+
+<!-- Queue -->
+<div id="queue-screen" hidden>
+  <div class="queue-topbar">
+    <h1><span id="queue-title">Project Documents</span><span class="queue-sub" id="queue-sub"></span></h1>
+    <span class="save-indicator" id="save-indicator"></span>
+    <button class="btn-ghost" id="queue-add-more">+ Add files</button>
+    <button class="btn-ghost btn-strong" id="queue-export-btn">Export reviews</button>
+    <button class="btn-ghost" id="queue-clear-btn">Clear saved progress</button>
+    <button class="btn-ghost" id="queue-restart-btn">↩ New project</button>
+    <input type="file" class="hidden-input" id="queue-add-input" accept=".md,.markdown,.txt" multiple>
+  </div>
+  <div class="queue-body">
+    <div class="queue-grid" id="queue-grid"></div>
+  </div>
+</div>
+
+<!-- Project setup -->
+<div id="setup-screen" hidden>
+  <div class="topbar">
+    <span class="topbar-title">⚙️ Project setup</span>
+    <span class="topbar-progress" id="setup-progress"></span>
+    <button class="btn-ghost" id="setup-back-btn">← Queue</button>
+  </div>
+  <div class="setup-body"><div class="setup-form" id="setup-form"></div></div>
+</div>
+
+<!-- Review -->
+<div id="review-screen" hidden>
+  <div class="topbar">
+    <span class="topbar-title" id="rev-title"></span>
+    <span class="type-badge" id="rev-type-badge"></span>
+    <span class="topbar-progress" id="rev-progress"></span>
+    <button class="btn-ghost btn-add" id="rev-add-btn">+ Add</button>
+    <button class="btn-ghost" id="rev-queue-btn">← Queue</button>
+  </div>
+  <div class="progress-track"><div class="progress-fill" id="rev-progress-fill"></div></div>
+  <div class="review-body">
+    <div class="sidebar" id="sidebar"></div>
+    <div class="main-area" id="main-area">
+      <div class="item-card">
+        <div class="item-header">
+          <div class="item-badge" id="item-badge"></div>
+          <div style="flex:1;min-width:0">
+            <div class="item-section" id="item-section"></div>
+            <div class="item-title" id="item-title"></div>
+          </div>
+        </div>
+        <div class="item-body">
+          <div class="item-content" id="item-content"></div>
+          <div class="item-meta-row" id="item-meta-row"></div>
+        </div>
+        <div class="fill-panel" id="fill-panel" hidden>
+          <div class="fill-panel-head"><div class="field-label">Fill in placeholders</div><span class="hint">Short values only; use Modify for longer text.</span></div>
+          <div id="fill-rows"></div>
+        </div>
+        <div class="decision-row" id="decision-row"></div>
+        <div class="expand-panel" id="expand-panel" hidden>
+          <div>
+            <div class="field-label" id="expand-label">Notes</div>
+            <textarea class="field-textarea" id="expand-text" rows="3" placeholder="Add notes…"></textarea>
+          </div>
+          <div id="expand-extra" hidden>
+            <div class="field-label" id="expand-extra-label">Additional notes</div>
+            <textarea class="field-textarea" id="expand-extra-text" rows="2"></textarea>
+          </div>
+        </div>
+        <div class="nav-footer">
+          <button class="btn-nav" id="prev-btn">← Back</button>
+          <span class="nav-counter" id="nav-counter"></span>
+          <button class="btn-nav btn-nav-next" id="next-btn">Next →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add panel -->
+<div id="add-overlay"></div>
+<div id="add-panel">
+  <div class="add-panel-header">
+    <h2 id="add-panel-title">Add to document</h2>
+    <button class="btn-close-panel" id="close-add-panel" aria-label="Close">×</button>
+  </div>
+  <div class="add-panel-body">
+    <div>
+      <div class="field-label">Section</div>
+      <div class="cat-row">
+        <div class="fgroup"><select class="field-select" id="add-section-select"></select></div>
+        <button class="btn-new-cat" id="add-new-section-btn">+ New</button>
+      </div>
+      <div id="new-section-row" hidden style="margin-top:8px">
+        <input class="field-input" id="new-section-input" placeholder="Section name, then Enter">
+      </div>
+    </div>
+    <div>
+      <div class="field-label" id="add-item-label">Item</div>
+      <textarea class="field-textarea" id="add-item-text" rows="3" placeholder="Describe the new item…"></textarea>
+    </div>
+    <div>
+      <div class="field-label">Details (optional)</div>
+      <textarea class="field-textarea" id="add-item-details" rows="3" placeholder="Acceptance criteria, context, links…"></textarea>
+    </div>
+  </div>
+  <div id="added-items-section" hidden>
+    <div class="added-items-title" id="added-items-title">Added (0)</div>
+    <div id="added-items-list"></div>
+  </div>
+  <div class="add-panel-footer">
+    <button class="btn-add-submit" id="add-submit-btn">+ Add item</button>
+  </div>
+</div>
+
+<!-- Export -->
+<div id="complete-screen" hidden>
+  <div class="complete-header">
+    <strong>Export reviews</strong>
+    <div class="complete-stats" id="complete-stats"></div>
+    <button class="btn-ghost" id="export-back-btn">← Back to queue</button>
+  </div>
+  <div class="complete-body">
+    <div class="export-intro" id="export-intro"></div>
+    <div class="export-actions" id="export-actions"></div>
+    <div id="output-sections"></div>
+  </div>
+</div>
+
+</div>
+
+<!--
+  Core logic: parsing documents, project setup facts and building review files.
+  It has no DOM access, so it can be tested outside the browser.
+-->
+<script id="core">
+const DOC_TYPES = {
+  prd:{label:'Product Requirements',icon:'📋',color:'#2563eb',colorBg:'#eff6ff',
+    decisions:[{key:'d0',name:'Accept',label:'✓ Accept',cls:'btn-d0'},{key:'d1',name:'Reject',label:'✕ Reject',cls:'btn-d1',expandNote:'Reason for rejection'},{key:'d2',name:'Modify',label:'✎ Modify',cls:'btn-d2',expandNote:'Revised requirement',expandExtra:'Additional notes'}],
+    addLabel:'New requirement'},
+  design:{label:'Design',icon:'🎨',color:'#7c3aed',colorBg:'#f5f3ff',
+    decisions:[{key:'d0',name:'Approve',label:'✓ Approve',cls:'btn-d0'},{key:'d1',name:'Flag issue',label:'⚠ Flag Issue',cls:'btn-d1',expandNote:'Issue description'},{key:'d2',name:'Suggest change',label:'✎ Suggest Change',cls:'btn-d2',expandNote:'Suggested change'}],
+    addLabel:'New screen / flow'},
+  technical:{label:'Technical',icon:'⚙️',color:'#0891b2',colorBg:'#ecfeff',
+    decisions:[{key:'d0',name:'Approve',label:'✓ Approve',cls:'btn-d0'},{key:'d1',name:'Flag risk',label:'⚠ Flag Risk',cls:'btn-d1',expandNote:'Risk description'},{key:'d2',name:'Modify',label:'✎ Modify',cls:'btn-d2',expandNote:'Suggested change'}],
+    addLabel:'New module / ADR / endpoint'},
+  roadmap:{label:'Roadmap',icon:'🗺️',color:'#16a34a',colorBg:'#f0fdf4',
+    decisions:[{key:'d0',name:'Approve',label:'✓ Approve',cls:'btn-d0'},{key:'d1',name:'Defer',label:'↓ Defer',cls:'btn-d1',expandNote:'Reason for deferral'},{key:'d2',name:'Rescope',label:'↔ Rescope',cls:'btn-d2',expandNote:'Rescoped description',expandExtra:'New milestone / priority'}],
+    addLabel:'New task'},
+  deployment:{label:'Deployment',icon:'🚀',color:'#dc2626',colorBg:'#fef2f2',
+    decisions:[{key:'d0',name:'Approve',label:'✓ Approve',cls:'btn-d0'},{key:'d1',name:'Flag concern',label:'⚠ Flag Concern',cls:'btn-d1',expandNote:'Concern / blocker'},{key:'d2',name:'Modify',label:'✎ Modify',cls:'btn-d2',expandNote:'Suggested change'}],
+    addLabel:'New checklist item'},
+  testing:{label:'Testing',icon:'🧪',color:'#d97706',colorBg:'#fffbeb',
+    decisions:[{key:'d0',name:'Approve',label:'✓ Approve',cls:'btn-d0'},{key:'d1',name:'Flag gap',label:'⚠ Flag Gap',cls:'btn-d1',expandNote:'Gap / missing coverage'},{key:'d2',name:'Modify',label:'✎ Modify',cls:'btn-d2',expandNote:'Revised test case'}],
+    addLabel:'New test case'},
+  github:{label:'GitHub Config',icon:'🐙',color:'#374151',colorBg:'#f3f4f6',
+    decisions:[{key:'d0',name:'Accept',label:'✓ Accept',cls:'btn-d0'},{key:'d1',name:'Flag',label:'⚑ Flag',cls:'btn-d1',expandNote:'Flag reason'},{key:'d2',name:'Modify',label:'✎ Modify',cls:'btn-d2',expandNote:'Suggested change'}],
+    addLabel:'New rule / field'},
+  agents:{label:'Agent Rules',icon:'🤖',color:'#6366f1',colorBg:'#eef2ff',
+    decisions:[{key:'d0',name:'Accept',label:'✓ Accept',cls:'btn-d0'},{key:'d1',name:'Flag',label:'⚑ Flag',cls:'btn-d1',expandNote:'Concern about this rule'},{key:'d2',name:'Modify',label:'✎ Modify Rule',cls:'btn-d2',expandNote:'Modified rule text'}],
+    addLabel:'New rule'},
+  general:{label:'Document',icon:'📄',color:'#6b6860',colorBg:'#f0eeeb',
+    decisions:[{key:'d0',name:'Accept',label:'✓ Accept',cls:'btn-d0'},{key:'d1',name:'Reject',label:'✕ Reject',cls:'btn-d1',expandNote:'Reason'},{key:'d2',name:'Modify',label:'✎ Modify',cls:'btn-d2',expandNote:'Notes / changes'}],
+    addLabel:'New item'}
+};
+
+const VERDICTS = ['Approved','Approved with changes','Changes requested','Rejected'];
+const KIND_LABELS = {row:'ROW',list:'ITEM',check:'CHECK',text:'TEXT',heading:'HEADING',meta:'HEADER'};
+
+// Known template files, in suggested review order.
+const FILE_TYPES = {'readme.md':'general','prd.md':'prd','design.md':'design','technical.md':'technical','testing.md':'testing','deployment.md':'deployment','roadmap.md':'roadmap','github.md':'github','agents.md':'agents'};
+const FILE_ORDER = Object.keys(FILE_TYPES);
+
+function detectDocType(path, h1) {
+  const base = path.split('/').pop().toLowerCase();
+  if (FILE_TYPES[base]) return FILE_TYPES[base];
+  const s = (base.replace(/\.(md|markdown|txt)$/, '') + ' ' + (h1 || '')).toLowerCase();
+  const rules = [
+    ['prd', /\b(prd|product requirements?|requirements)\b/],
+    ['design', /\b(design|ux|ui)\b/],
+    ['technical', /\b(technical|tech spec|architecture|api)\b/],
+    ['roadmap', /\b(roadmap|milestones?|sprints?)\b/],
+    ['deployment', /\b(deploy(ment)?|operations|release|infrastructure)\b/],
+    ['testing', /\b(test(ing)?|qa|acceptance)\b/],
+    ['github', /\bgithub\b/],
+    ['agents', /\b(agents?|claude)\b/]
+  ];
+  for (const [type, re] of rules) if (re.test(s)) return type;
+  return 'general';
+}
+
+function docSortKey(path) {
+  const base = path.split('/').pop().toLowerCase();
+  const i = FILE_ORDER.indexOf(base);
+  return (i === -1 ? 100 : i) + ':' + path.toLowerCase();
+}
+
+// Placeholders are text in double curly braces; a preceding "$" marks a
+// GitHub Actions expression, which is not a placeholder.
+const PH_RE = /(^|[^$])(\{\{[^{}\n]*\}\})/g;
+const TBD_RE = /\bTBD\b/g;
+
+function findPlaceholders(text) {
+  const out = [];
+  for (const m of String(text).matchAll(PH_RE)) out.push(m[2]);
+  return out;
+}
+function countTbd(text) { return (String(text).match(TBD_RE) || []).length; }
+function placeholderInner(token) { return token.slice(2, -2).trim(); }
+// Short placeholders (a name, a command, a URL) get a fill-in input; longer
+// ones ask for prose and are better handled with Modify.
+function isShortPlaceholder(token) { return placeholderInner(token).length <= 40; }
+
+function hash(s) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  return (h >>> 0).toString(16).padStart(8, '0');
+}
+
+const ID_RE = /^(?:\*\*|`)?([A-Z][A-Z0-9]{0,9}-\d{1,5}|M\d{1,2})(?![\w-])/;
+
+function splitCells(line) {
+  return line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
+}
+function isTableSeparator(line) {
+  return /^\s*\|?[\s:|-]+\|?\s*$/.test(line) && line.includes('-') && line.includes('|');
+}
+function truncate(s, n) { s = s.replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1) + '…' : s; }
+
+// Splits a markdown document into reviewable items: table rows, top-level list
+// items (with their nested content), paragraphs, code blocks, header lines and any
+// heading that still contains a placeholder. Items keep the document's own IDs.
+function parseDoc(text) {
+  const lines = String(text).replace(/\r\n?/g, '\n').split('\n');
+  const items = [], sections = [], meta = {};
+  let h1 = '', h2 = '', h3 = '', para = null, inFence = false;
+  const section = () => [h2, h3].filter(Boolean).join(' › ') || (h1 ? 'Introduction' : '');
+  const push = it => { it.section = section(); items.push(it); };
+  const flushPara = () => {
+    if (!para) return;
+    const c = para.lines.join('\n').trim();
+    if (c) push({ kind: 'text', content: c, start: para.start, end: para.end });
+    para = null;
+  };
+  const addPara = (l, i) => { if (!para) para = { lines: [], start: i, end: i }; para.lines.push(l); para.end = i; };
+
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i];
+    if (/^\s*(```|~~~)/.test(l)) { addPara(l, i); inFence = !inFence; continue; }
+    if (inFence) { addPara(l, i); continue; }
+
+    const hm = /^(#{1,6})\s+(.*?)\s*#*\s*$/.exec(l);
+    if (hm) {
+      flushPara();
+      const lvl = hm[1].length, t = hm[2].trim();
+      if (lvl === 1) { h1 = t; h2 = ''; h3 = ''; }
+      else if (lvl === 2) { h2 = t; h3 = ''; sections.push(t); }
+      else if (lvl === 3) { h3 = t; sections.push(h2 ? h2 + ' › ' + t : t); }
+      if (findPlaceholders(t).length) push({ kind: 'heading', content: t, start: i, end: i });
+      continue;
+    }
+    if (!l.trim()) { flushPara(); continue; }
+    if (!h2 && /^(Status|References)\s*:/i.test(l)) {
+      flushPara();
+      l.split('|').forEach(part => {
+        const m = /^\s*([A-Za-z ]+?)\s*:\s*(.*)$/.exec(part);
+        if (m) meta[m[1].toLowerCase()] = m[2].trim();
+      });
+      items.push({ kind: 'meta', section: 'Document header', content: l.trim(), start: i, end: i });
+      continue;
+    }
+    if (/^\s*<!--.*-->\s*$/.test(l)) continue;
+
+    if (/^\s*\|/.test(l)) {
+      flushPara();
+      if (isTableSeparator(lines[i + 1] || '')) {
+        const headers = splitCells(l);
+        i++;
+        while (i + 1 < lines.length && /^\s*\|/.test(lines[i + 1])) {
+          i++;
+          push({ kind: 'row', content: lines[i].trim(), cells: splitCells(lines[i]), headers, start: i, end: i });
+        }
+      } else if (!isTableSeparator(l)) {
+        push({ kind: 'row', content: l.trim(), cells: splitCells(l), headers: [], start: i, end: i });
+      }
+      continue;
+    }
+
+    const bm = /^(\s*)([-*+]|\d+[.)])\s+(.*)$/.exec(l);
+    if (bm && bm[1].length <= 1) {
+      flushPara();
+      let j = i + 1;
+      while (j < lines.length) {
+        const s = lines[j];
+        if (!s.trim()) {
+          let k = j; while (k < lines.length && !lines[k].trim()) k++;
+          if (k < lines.length && /^\s{2,}\S/.test(lines[k])) { j = k; continue; }
+          break;
+        }
+        if (/^\s{2,}\S/.test(s)) { j++; continue; }
+        break;
+      }
+      const content = lines.slice(i, j).join('\n').replace(/\s+$/, '');
+      const cm = /^\[([ xX])\]\s*(.*)$/.exec(bm[3]);
+      push({ kind: cm ? 'check' : 'list', content, start: i, end: j - 1, checked: cm ? cm[1] !== ' ' : undefined, lead: cm ? cm[2] : bm[3] });
+      i = j - 1;
+      continue;
+    }
+    addPara(l, i);
+  }
+  flushPara();
+
+  const seen = {};
+  for (const it of items) {
+    let id = '', title = '';
+    if (it.kind === 'row') {
+      const m = ID_RE.exec(it.cells[0] || '');
+      id = m ? m[1] : '';
+      const rest = id ? it.cells.slice(1) : it.cells;
+      title = rest.find(c => c) || it.cells[0] || '(empty row)';
+    } else if (it.kind === 'list' || it.kind === 'check') {
+      const m = ID_RE.exec(it.lead.trim());
+      id = m ? m[1] : '';
+      title = id ? it.lead.trim().slice(m[0].length).replace(/^\s*(\([^)]*\))?\s*[:—–-]?\s*/, '') : it.lead;
+      if (!title) title = it.lead;
+      delete it.lead;
+    } else {
+      title = it.content.split('\n').find(x => x.trim() && !/^\s*(```|~~~)/.test(x)) || it.content;
+    }
+    it.id = id;
+    it.title = truncate(title.replace(/^[-*+]\s+/, ''), 90);
+    it.line = it.start + 1;
+    it.hash = hash(it.content);
+    // Placeholder occurrences, in display order; table cells remember their column.
+    if (it.kind === 'row') {
+      it.phs = [];
+      it.cells.forEach((c, k) => findPlaceholders(c).forEach(t => it.phs.push({ token: t, col: it.headers[k] || 'Column ' + (k + 1) })));
+    } else {
+      it.phs = findPlaceholders(it.content).map(t => ({ token: t, col: '' }));
+    }
+    it.placeholders = it.phs.map(p => p.token);
+    it.tbd = countTbd(it.content);
+    let key = id || it.kind + '|' + it.section + '|' + it.hash;
+    if (seen[key]) { seen[key]++; key += '~' + seen[key]; } else seen[key] = 1;
+    it.key = key;
+  }
+  return { items, sections: [...new Set(sections)], meta, h1 };
+}
+
+// ── Project setup ──────────────────────────────────────
+const LICENSES = ['MIT', 'Apache-2.0', 'BSD-3-Clause', 'GPL-3.0-only', 'Proprietary — all rights reserved'];
+const APP_KINDS = ['Web client', 'Server/API', 'Mobile client', 'Desktop client', 'Worker'];
+
+const SETUP_GROUPS = [
+  { title: 'Project', hint: 'Used in README.md and AGENTS.md.', fields: [
+    { key: 'project.name', label: 'Project name', required: true },
+    { key: 'project.license', label: 'License', type: 'license', required: true },
+    { key: 'project.description', label: 'One-line description', full: true, required: true, placeholder: 'What it does and for whom' }
+  ]},
+  { title: 'GitHub', hint: 'Detected from the folder\'s .git settings where possible. Never enter tokens here.', fields: [
+    { key: 'github.repo', label: 'Repository', required: true, validate: 'repo', placeholder: 'https://github.com/owner/repo or owner/repo' },
+    { key: 'github.defaultBranch', label: 'Default branch', required: true, validate: 'branch', placeholder: 'main' },
+    { key: 'github.project', label: 'GitHub Project number', validate: 'number', placeholder: 'From the Project URL, e.g. 3' }
+  ]},
+  { title: 'People', hint: 'GitHub usernames or @org/team names (no emails). Used in doc headers, CODEOWNERS and release approval.', fields: [
+    { key: 'people.docOwner', label: 'Document owner', required: true, validate: 'ghUser', placeholder: '@username' },
+    { key: 'people.releaseOwner', label: 'Release owner', required: true, validate: 'ghUser', placeholder: '@username' },
+    { key: 'people.codeOwner', label: 'Default code owner', required: true, validate: 'ghUser', placeholder: '@username or @org/team' }
+  ]},
+  { title: 'Conventions', hint: 'Used in AGENTS.md. The defaults match the template.', fields: [
+    { key: 'conventions.branch', label: 'Branch naming', default: '123-short-title' },
+    { key: 'conventions.commit', label: 'Commit convention', default: 'Conventional Commits, scoped by app' }
+  ]}
+];
+const SETUP_FIELDS = SETUP_GROUPS.flatMap(g => g.fields);
+
+function newSetup() {
+  const values = {};
+  SETUP_FIELDS.forEach(f => { values[f.key] = f.default || ''; });
+  return { values, apps: [], packages: [], sources: {} };
+}
+
+function parseRepo(v) {
+  v = String(v || '').trim();
+  const m = /^(?:https?:\/\/github\.com\/|git@github\.com:|ssh:\/\/git@github\.com\/)([\w.-]+)\/([\w.-]+?)(?:\.git)?\/?$/.exec(v) || /^([\w.-]+)\/([\w.-]+)$/.exec(v);
+  return m ? m[1] + '/' + m[2] : '';
+}
+function parseGitConfig(text) {
+  const m = /\[remote "origin"\][^[]*?\burl\s*=\s*(\S+)/.exec(String(text));
+  return m ? parseRepo(m[1]) : '';
+}
+function parseGitHead(text) {
+  const m = /^ref:\s*refs\/heads\/(\S+)/.exec(String(text).trim());
+  return m ? m[1] : '';
+}
+function normUser(v) { v = String(v || '').trim(); return v && !v.startsWith('@') ? '@' + v : v; }
+
+const VALIDATORS = {
+  repo: v => parseRepo(v) ? '' : 'Use https://github.com/owner/repo or owner/repo',
+  branch: v => /^[A-Za-z0-9._/-]+$/.test(v) && !/\.\.|\/\/|^\/|\/$|\.lock$/.test(v) ? '' : 'Not a valid branch name',
+  number: v => /^\d+$/.test(v) ? '' : 'Use the number from the Project URL',
+  ghUser: v => /^@?[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}(?:\/[A-Za-z0-9][A-Za-z0-9._-]*)?$/.test(String(v).trim()) ? '' : 'Use a GitHub username or @org/team (no emails)',
+  appName: v => /^[a-z][a-z0-9-]{0,29}$/.test(v) ? '' : 'Lowercase letters, digits and hyphens, starting with a letter'
+};
+
+function fieldError(field, value) {
+  value = String(value || '').trim();
+  if (!value) return field.required ? 'Required' : '';
+  return field.validate ? VALIDATORS[field.validate](value) : '';
+}
+
+// Errors for app and package rows, keyed "apps.0.name" etc.
+function listErrors(setup) {
+  const errs = {}, names = {};
+  const check = (list, prefix) => list.forEach((r, i) => {
+    const n = (r.name || '').trim();
+    const e = n ? VALIDATORS.appName(n) : 'Required';
+    if (e) errs[prefix + '.' + i + '.name'] = e;
+    else if (names[n]) errs[prefix + '.' + i + '.name'] = 'Name already used';
+    names[n] = true;
+    if (prefix === 'apps' && !r.kind) errs[prefix + '.' + i + '.kind'] = 'Required';
+    if (r.owner && r.owner.trim() && VALIDATORS.ghUser(r.owner)) errs[prefix + '.' + i + '.owner'] = VALIDATORS.ghUser(r.owner);
+  });
+  check(setup.apps || [], 'apps');
+  check(setup.packages || [], 'packages');
+  return errs;
+}
+
+function setupStatus(setup) {
+  const required = SETUP_FIELDS.filter(f => f.required);
+  let done = required.filter(f => !fieldError(f, setup.values[f.key])).length;
+  const listErrs = listErrors(setup);
+  const appsOk = (setup.apps || []).length > 0 && !Object.keys(listErrs).some(k => k.startsWith('apps.'));
+  if (appsOk) done++;
+  const fieldErrs = SETUP_FIELDS.filter(f => setup.values[f.key] && fieldError(f, setup.values[f.key])).length;
+  return { done, total: required.length + 1, errors: fieldErrs + Object.keys(listErrs).length };
+}
+
+function hasSetupContent(setup) {
+  if (!setup) return false;
+  return SETUP_FIELDS.some(f => (setup.values[f.key] || '') !== (f.default || '')) || (setup.apps || []).length > 0 || (setup.packages || []).length > 0;
+}
+
+// Which setup fact answers a placeholder, if any. The "owner" placeholder means the
+// document owner only in a document header; in tables it is a per-row owner.
+function factForPlaceholder(token, item) {
+  const t = placeholderInner(token).toLowerCase();
+  if (t === 'project name') return 'project.name';
+  if (t.startsWith('one-line description')) return 'project.description';
+  if (t.startsWith('license name')) return 'project.license';
+  if (t === 'owner/repo') return 'github.repo';
+  if (t.startsWith('owner, project number')) return 'github.project';
+  if (t === 'main') return 'github.defaultBranch';
+  if (t.startsWith('branch convention')) return 'conventions.branch';
+  if (t.startsWith('commit convention')) return 'conventions.commit';
+  if (t === 'default-owner') return 'people.codeOwner';
+  if (item && item.kind === 'meta') {
+    if (t === 'owner') return 'people.docOwner';
+    if (t === 'yyyy-mm-dd') return 'auto.date';
+  }
+  if (/^app \d+, e\.g\. [\w-]+$/.test(t) || ['web', 'api', 'mobile', 'desktop', 'ops-api', 'api-contract', 'ops-api-contract'].includes(t)) return 'apps';
+  return '';
+}
+
+function factValue(setup, key) {
+  if (!setup || !key) return '';
+  if (key === 'auto.date') return 'set to the date the review is applied';
+  if (key === 'apps') {
+    const names = (setup.apps || []).concat(setup.packages || []).map(a => (a.name || '').trim()).filter(Boolean);
+    return names.length ? names.join(', ') : '';
+  }
+  return (setup.values[key] || '').trim();
+}
+
+// The state of each placeholder occurrence in an item: answered by setup, filled
+// in during review, or still open.
+function placeholderStates(item, setup, fills) {
+  const values = (fills && fills.values) || {};
+  return item.phs.map((p, i) => {
+    const fact = factForPlaceholder(p.token, item);
+    const fv = fact ? factValue(setup, fact) : '';
+    if (fv) return { ...p, i, fact, value: fv, source: 'setup' };
+    const v = (values[i] || '').trim();
+    if (v) return { ...p, i, fact, value: v, source: 'fill' };
+    return { ...p, i, fact, value: '', source: '' };
+  });
+}
+
+function localDate(d) { return (d || new Date()).toLocaleDateString('en-CA'); }
+
+function reviewFileName(path, date, n) {
+  const base = path.split('/').pop().replace(/\.(md|markdown|txt)$/i, '');
+  return date + '-' + base + (n && n > 1 ? '-' + n : '') + '.md';
+}
+
+function fenceBlock(s) {
+  const runs = s.match(/`{3,}/g);
+  const f = '`'.repeat(runs ? Math.max(...runs.map(r => r.length)) + 1 : 3);
+  return f + '\n' + s + '\n' + f;
+}
+function cell(v) { return String(v || '').replace(/\|/g, '\\|').replace(/\n/g, ' ') || '_Not set_'; }
+
+function hasFills(state) {
+  return Object.values((state && state.fills) || {}).some(f => Object.values(f.values || {}).some(v => String(v).trim()));
+}
+function hasReviewContent(state) {
+  return !!(state && (Object.keys(state.decisions || {}).length || (state.added || []).length || state.verdict || hasFills(state)));
+}
+
+// Builds the review file an agent applies to the document. Entries are keyed by
+// the document's own IDs (or quoted titles) with line numbers as of the review.
+function buildReviewMarkdown(doc, state, opts) {
+  const tc = DOC_TYPES[doc.docType] || DOC_TYPES.general;
+  const decOf = k => tc.decisions.find(d => d.key === k) || { name: k };
+  const decisions = state.decisions || {};
+  const added = state.added || [];
+  const fills = state.fills || {};
+  const setup = opts.setup || null;
+  const ref = it => it.id || '"' + it.title + '"';
+  const decided = doc.items.filter(it => decisions[it.key]);
+  const action = decided.filter(it => decisions[it.key].d !== 'd0');
+  const accepted = decided.filter(it => decisions[it.key].d === 'd0');
+  const notReviewed = doc.items.filter(it => !decisions[it.key]);
+  const states = new Map(doc.items.map(it => [it, placeholderStates(it, setup, fills[it.key])]));
+  const filled = doc.items.filter(it => states.get(it).some(s => s.source === 'fill'));
+  const open = doc.items.filter(it => states.get(it).some(s => !s.value));
+  const fromSetup = doc.items.reduce((n, it) => n + states.get(it).filter(s => s.source === 'setup').length, 0);
+  const tbdItems = doc.items.filter(it => it.tbd);
+  const m = doc.meta || {};
+  const docInfo = [m.status && 'status ' + m.status, m.version && 'version ' + m.version].filter(Boolean).join(', ');
+
+  const L = [];
+  L.push('# Review: ' + doc.path, '');
+  L.push('- Document: `' + doc.path + '`' + (docInfo ? ' (' + docInfo + ' at time of review)' : ''));
+  L.push('- Reviewer: ' + (opts.reviewer || 'Unnamed reviewer'));
+  L.push('- Date: ' + opts.date);
+  L.push('- Verdict: ' + (state.verdict || 'Not given'));
+  L.push('- Coverage: ' + decided.length + ' of ' + doc.items.length + ' items decided; ' + action.length + ' need action; ' + added.length + ' added; ' + filled.length + ' with placeholder values');
+  L.push('- Review status: Open', '');
+  L.push('> For agents: apply every entry under "Action required", "Added items" and "Placeholder values" to `' + doc.path + '`, then replace each "Resolution: pending" with what you did (or why not). Set "Review status" to Applied when all entries are resolved, or Partially applied otherwise. Leave accepted items unchanged. Line numbers refer to the document as reviewed; find items by ID or text if it has changed. Follow AGENTS.md "Applying doc reviews".', '');
+
+  L.push('## Action required (' + action.length + ')', '');
+  if (!action.length) L.push('None.', '');
+  for (const it of action) {
+    const d = decisions[it.key], dec = decOf(d.d);
+    L.push('### ' + ref(it) + ' · ' + dec.name, '');
+    L.push('Section: ' + (it.section || '(none)') + ' · Line ' + it.line, '');
+    L.push('Original:', '', fenceBlock(it.content), '');
+    if (d.note) L.push('**' + (dec.expandNote || 'Notes') + ':** ' + d.note.trim(), '');
+    if (d.extra) L.push('**' + (dec.expandExtra || 'Additional notes') + ':** ' + d.extra.trim(), '');
+    if (!d.note && !d.extra) L.push('_No notes given._', '');
+    L.push('Resolution: pending', '');
+  }
+
+  L.push('## Added items (' + added.length + ')', '');
+  if (!added.length) L.push('None.', '');
+  for (const a of added) {
+    L.push('### ' + truncate(a.title, 80), '');
+    L.push('Add to section: ' + (a.section || '(choose an appropriate section)'), '');
+    L.push(a.title.trim(), '');
+    if (a.details) L.push('**Details:** ' + a.details.trim(), '');
+    L.push('Resolution: pending', '');
+  }
+
+  L.push('## Placeholder values (' + filled.length + ')', '');
+  if (!filled.length) L.push('None.', '');
+  for (const it of filled) {
+    L.push('### ' + ref(it) + ' · Fill placeholders', '');
+    L.push('Section: ' + (it.section || '(none)') + ' · Line ' + it.line, '');
+    for (const s of states.get(it).filter(x => x.source === 'fill')) {
+      L.push('- ' + (s.col ? 'Column "' + s.col + '": ' : '') + '`' + s.token + '` → ' + s.value.trim());
+    }
+    L.push('', 'Resolution: pending', '');
+  }
+
+  L.push('## Unfilled placeholders (' + open.length + ')', '');
+  if (fromSetup) L.push(fromSetup + ' placeholder' + (fromSetup !== 1 ? 's are' : ' is') + ' answered by the project setup review and not listed here.', '');
+  if (!open.length) L.push('None.', '');
+  for (const it of open) L.push('- ' + ref(it) + ' (line ' + it.line + '): ' + states.get(it).filter(s => !s.value).map(s => '`' + s.token + '`').join(', '));
+  if (open.length) L.push('');
+
+  if (tbdItems.length) {
+    L.push('## Open TBDs (' + tbdItems.length + ')', '');
+    for (const it of tbdItems) L.push('- ' + ref(it) + ' (line ' + it.line + ')');
+    L.push('');
+  }
+
+  L.push('## Accepted (' + accepted.length + ')', '');
+  if (!accepted.length) L.push('None.', '');
+  for (const it of accepted) L.push('- ' + ref(it) + (it.id ? ' — ' + it.title : '') + ' (line ' + it.line + ')');
+  if (accepted.length) L.push('');
+
+  L.push('## Not reviewed (' + notReviewed.length + ')', '');
+  if (!notReviewed.length) L.push('None.', '');
+  for (const it of notReviewed) L.push('- ' + ref(it) + (it.id ? ' — ' + it.title : '') + ' (line ' + it.line + ')');
+  return L.join('\n').replace(/\n{3,}/g, '\n\n').trim() + '\n';
+}
+
+// Builds the project setup review: the facts plus every file they must be applied to.
+function buildSetupMarkdown(setup, opts) {
+  const v = k => (setup.values[k] || '').trim();
+  const apps = (setup.apps || []).filter(a => (a.name || '').trim());
+  const pkgs = (setup.packages || []).filter(p => (p.name || '').trim());
+  const repo = parseRepo(v('github.repo'));
+  const owner = a => normUser(a.owner) || normUser(v('people.codeOwner')) || '_default code owner_';
+  const appNames = apps.map(a => a.name.trim());
+  const hasMobile = apps.some(a => a.kind === 'Mobile client');
+  const hasDesktop = apps.some(a => a.kind === 'Desktop client');
+  const removeSections = [!hasMobile && '"Mobile releases"', !hasDesktop && '"Desktop releases"'].filter(Boolean);
+  const st = setupStatus(setup);
+
+  const L = [];
+  L.push('# Review: project setup', '');
+  L.push('- Reviewer: ' + (opts.reviewer || 'Unnamed reviewer'));
+  L.push('- Date: ' + opts.date);
+  L.push('- Completeness: ' + st.done + ' of ' + st.total + ' required facts' + (st.errors ? '; ' + st.errors + ' invalid value(s) need checking' : ''));
+  L.push('- Review status: Open', '');
+  L.push('> For agents: apply these facts to every file under "Where to apply", replacing the matching placeholders. Expand per-app tables, columns, jobs and lines to exactly the apps listed (remove the template\'s example apps that are not listed). Replace each "Resolution: pending" with what you changed. Set "Review status" to Applied when all entries are resolved, or Partially applied otherwise. Follow AGENTS.md "Applying doc reviews". Facts marked _Not set_ stay as placeholders.', '');
+
+  L.push('## Facts', '', '| Fact | Value |', '|---|---|');
+  for (const f of SETUP_FIELDS) {
+    let val = v(f.key);
+    if (f.key === 'github.repo' && repo) val = repo;
+    if (f.validate === 'ghUser' && val) val = normUser(val);
+    L.push('| ' + f.label + ' | ' + cell(val) + ' |');
+  }
+  L.push('');
+
+  L.push('## Apps (' + apps.length + ')', '');
+  if (!apps.length) L.push('None listed yet.', '');
+  else {
+    L.push('| App | Path | Kind | Code owner |', '|---|---|---|---|');
+    for (const a of apps) L.push('| ' + cell(a.name.trim()) + ' | apps/' + cell(a.name.trim()) + ' | ' + cell(a.kind) + ' | ' + cell(owner(a)) + ' |');
+    L.push('');
+  }
+
+  L.push('## Shared packages (' + pkgs.length + ')', '');
+  if (!pkgs.length) L.push('None listed yet.', '');
+  else {
+    L.push('| Package | Path | Code owner |', '|---|---|---|');
+    for (const p of pkgs) L.push('| ' + cell(p.name.trim()) + ' | packages/' + cell(p.name.trim()) + ' | ' + cell(owner(p)) + ' |');
+    L.push('');
+  }
+
+  const targets = [
+    ['README.md', 'Title (project name), one-line description and License. Commands table: one row per app (plus rows for packages with their own checks), named after the app; delete the unused example rows.'],
+    ['AGENTS.md', 'Project name in Purpose; branch naming and commit convention under "Branches and pull requests".'],
+    ['Document headers in docs/*.md', 'Set Owner to the document owner and Last updated to the date you apply this review.'],
+    ['docs/GITHUB.md', 'Repository, Project and Default branch under Configuration; the App labels list (one `app:<name>` per app, plus `app:packages` and `app:repo`).'],
+    ['docs/TECHNICAL.md', 'Components table: one row per app and package (and infra if used) with name, path, kind and owner. API contracts table: one row per server app and its consumers. Leave stack and hosting placeholders for the team to decide.'],
+    ['docs/DEPLOYMENT.md', '"Where each app runs": one row per app. Approval: release owner.' + (removeSections.length ? ' Remove the ' + removeSections.join(' and ') + ' section' + (removeSections.length > 1 ? 's' : '') + ' and matching checklist wording, since no listed app needs ' + (removeSections.length > 1 ? 'them' : 'it') + '.' : '')],
+    ['docs/TESTING.md', 'Strategy table: one row per app (and infra if used).'],
+    ['.github/CODEOWNERS', 'Default owner on the `*` line; one line per app and package with its code owner; owners for /infra/, docs/, AGENTS.md and .github/ (default code owner unless told otherwise); the release owner on .github/workflows/release.yml.'],
+    ['.github/workflows/ci.yml.example', 'One path filter and one job per app, named after the app; remove example jobs for apps not listed (keep the infra job only if infra/ is used); add every job to `ci-ok` needs; set the push branch to the default branch.'],
+    ['.github/workflows/release.yml.example', 'One release job per app (one per platform for mobile, one per operating system for desktop), named after the app, each with environment `release-<app>`; remove example jobs for apps not listed. Creating the environments, their secrets and required reviewers (the release owner) is a human step in GitHub settings.'],
+    ['.github/dependabot.yml.example', 'Keep only the ecosystems the listed apps use and point directories at their apps.'],
+    ['GitHub labels and milestones (not a file)', 'A human (or an agent explicitly authorized to change GitHub settings) runs: `bash scripts/setup-github.sh --repo ' + (repo || '<owner/repo>') + ' --apps ' + (appNames.join(',') || '<apps>') + (v('github.project') ? ' --project ' + v('github.project') : '') + '`. Record here who ran it.']
+  ];
+  L.push('## Where to apply (' + targets.length + ')', '');
+  for (const [file, what] of targets) L.push('### ' + file, '', what, '', 'Resolution: pending', '');
+  return L.join('\n').replace(/\n{3,}/g, '\n\n').trim() + '\n';
+}
+</script>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════
+const $ = id => document.getElementById(id);
+const STORE_PREFIX = 'project-doc-reviewer:v1:';
+const canPickDirectory = typeof window.showDirectoryPicker === 'function';
+const SETUP_TARGET = { path: 'project-setup.md', savedName: '' };
+
+let docs = [];              // {path,text,docType,typeConfig,items,sections,meta,h1,state,stale,savedName}
+let project = { name: '', rootName: '', docsDir: null, docsDirPath: '', detected: {} };
+let setup = newSetup();
+let currentDocIdx = 0, currentItemIdx = 0;
+
+$('reviewer-input').value = localStorage.getItem(STORE_PREFIX + 'reviewer') || '';
+$('reviewer-input').addEventListener('input', e => localStorage.setItem(STORE_PREFIX + 'reviewer', e.target.value.trim()));
+$('capability-note').textContent = canPickDirectory
+  ? 'Opening the folder lets this page read the repository settings and save reviews straight into docs/reviews/ (the browser will ask for permission).'
+  : 'This browser cannot write to folders, so reviews will be downloaded. Move them into docs/reviews/. Chrome or Edge can save them directly.';
+
+function storeKey(doc) { return STORE_PREFIX + (project.name || 'project') + ':' + doc.path; }
+function setupKey() { return STORE_PREFIX + (project.name || 'project') + '::setup'; }
+
+function markSaved(ok) {
+  $('save-indicator').textContent = ok ? 'Saved ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Could not save progress in this browser';
+}
+function saveState(doc) {
+  try { localStorage.setItem(storeKey(doc), JSON.stringify(doc.state)); markSaved(true); } catch (e) { markSaved(false); }
+}
+function saveSetup() {
+  try { localStorage.setItem(setupKey(), JSON.stringify(setup)); markSaved(true); } catch (e) { markSaved(false); }
+}
+
+// Restores saved decisions and fills, dropping any whose item text has changed since.
+function loadState(doc) {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(storeKey(doc)) || 'null'); } catch (e) {}
+  const state = { decisions: {}, added: [], verdict: '', fills: {} };
+  let stale = 0;
+  if (saved) {
+    const current = k => doc.items.find(i => i.key === k);
+    for (const [k, v] of Object.entries(saved.decisions || {})) {
+      const it = current(k);
+      if (it && it.hash === v.hash) state.decisions[k] = v; else stale++;
+    }
+    for (const [k, v] of Object.entries(saved.fills || {})) {
+      const it = current(k);
+      if (it && it.hash === v.hash) state.fills[k] = v; else if (Object.values(v.values || {}).some(x => x)) stale++;
+    }
+    state.added = Array.isArray(saved.added) ? saved.added : [];
+    state.verdict = saved.verdict || '';
+  }
+  doc.state = state;
+  doc.stale = stale;
+}
+
+// Loads saved setup answers, then fills empty fields from what the folder reveals.
+function loadSetup() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(setupKey()) || 'null'); } catch (e) {}
+  setup = newSetup();
+  if (saved) {
+    Object.assign(setup.values, saved.values || {});
+    setup.apps = Array.isArray(saved.apps) ? saved.apps : [];
+    setup.packages = Array.isArray(saved.packages) ? saved.packages : [];
+    setup.sources = saved.sources || {};
+  }
+  const suggest = (key, value, source) => {
+    if (value && !setup.values[key]) { setup.values[key] = value; setup.sources[key] = source; }
+  };
+  suggest('github.repo', project.detected.repo, 'Detected from .git/config');
+  suggest('github.defaultBranch', project.detected.branch, 'Detected from .git/HEAD');
+  const readme = docs.find(d => /(^|\/)readme\.md$/i.test(d.path));
+  if (readme && readme.h1 && !findPlaceholders(readme.h1).length) suggest('project.name', readme.h1, 'Taken from README.md');
+  if (!setup.apps.length && project.detected.apps && project.detected.apps.length) {
+    setup.apps = project.detected.apps.map(name => ({ name, kind: '', owner: '' }));
+    setup.sources.apps = 'Detected from apps/';
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// LOADING
+// ═══════════════════════════════════════════════════════
+function makeDoc(path, text) {
+  const parsed = parseDoc(text);
+  const docType = detectDocType(path, parsed.h1);
+  return { path, text, docType, typeConfig: DOC_TYPES[docType], items: parsed.items, sections: parsed.sections, meta: parsed.meta, h1: parsed.h1, state: null, stale: 0, savedName: '' };
+}
+
+function finishLoading(found, rootName) {
+  found.sort((a, b) => docSortKey(a.path).localeCompare(docSortKey(b.path)));
+  const fresh = found.filter(f => !docs.some(d => d.path === f.path)).map(f => makeDoc(f.path, f.text));
+  docs = docs.concat(fresh);
+  const firstLoad = !project.name;
+  if (firstLoad) {
+    const readme = docs.find(d => /(^|\/)readme\.md$/i.test(d.path));
+    const title = readme && readme.h1 && !findPlaceholders(readme.h1).length ? readme.h1 : '';
+    project.rootName = rootName || '';
+    project.name = rootName || title || 'project';
+  }
+  fresh.forEach(loadState);
+  if (firstLoad) loadSetup();
+  if (!docs.length) { alert('No markdown documents found. Pick the project folder (with README.md and docs/) or select .md files.'); return; }
+  buildQueue();
+}
+
+function isIncludedPath(rel) {
+  return /^(README|AGENTS)\.md$/i.test(rel) || /^docs\/[^/]+\.md$/i.test(rel);
+}
+
+async function readText(dir, name) {
+  try { return await (await (await dir.getFileHandle(name)).getFile()).text(); } catch (e) { return ''; }
+}
+
+async function openWithDirectoryPicker() {
+  let root;
+  try { root = await window.showDirectoryPicker({ id: 'project-doc-reviewer', mode: 'readwrite' }); }
+  catch (e) { return; }
+  const found = [];
+  for (const name of ['README.md', 'AGENTS.md']) { const t = await readText(root, name); if (t) found.push({ path: name, text: t }); }
+  let docsDir = null;
+  try { docsDir = await root.getDirectoryHandle('docs'); } catch (e) {}
+  if (docsDir) {
+    for await (const [name, h] of docsDir.entries()) if (h.kind === 'file' && /\.md$/i.test(name)) found.push({ path: 'docs/' + name, text: await (await h.getFile()).text() });
+    project.docsDir = docsDir; project.docsDirPath = 'docs/';
+  } else {
+    // The user picked the docs folder itself (or a folder of loose docs).
+    for await (const [name, h] of root.entries()) if (h.kind === 'file' && /\.md$/i.test(name) && !found.some(f => f.path === name)) found.push({ path: name, text: await (await h.getFile()).text() });
+    project.docsDir = root; project.docsDirPath = '';
+  }
+  // Repository facts for the setup form. A .git *file* (worktree) is skipped.
+  try {
+    const git = await root.getDirectoryHandle('.git');
+    project.detected.repo = parseGitConfig(await readText(git, 'config'));
+    project.detected.branch = parseGitHead(await readText(git, 'HEAD'));
+  } catch (e) {}
+  try {
+    const appsDir = await root.getDirectoryHandle('apps');
+    const names = [];
+    for await (const [name, h] of appsDir.entries()) if (h.kind === 'directory' && !VALIDATORS.appName(name)) names.push(name);
+    project.detected.apps = names.sort();
+  } catch (e) {}
+  finishLoading(found, root.name === 'docs' ? '' : root.name);
+}
+
+function readFiles(entries, rootName) {
+  return Promise.all(entries.map(({ file, path }) => file.text().then(text => ({ path, text })))).then(found => finishLoading(found, rootName));
+}
+
+$('open-folder-btn').addEventListener('click', () => canPickDirectory ? openWithDirectoryPicker() : $('folder-input').click());
+$('open-files-btn').addEventListener('click', () => $('file-input').click());
+$('file-input').addEventListener('change', e => { readFiles(Array.from(e.target.files).map(f => ({ file: f, path: f.name }))); e.target.value = ''; });
+$('queue-add-input').addEventListener('change', e => { readFiles(Array.from(e.target.files).map(f => ({ file: f, path: f.name }))); e.target.value = ''; });
+$('queue-add-more').addEventListener('click', () => $('queue-add-input').click());
+$('folder-input').addEventListener('change', async e => {
+  const files = Array.from(e.target.files);
+  const rootName = files.length ? files[0].webkitRelativePath.split('/')[0] : '';
+  const rel = f => f.webkitRelativePath.split('/').slice(1).join('/');
+  let entries = files.map(f => ({ file: f, path: rel(f) })).filter(x => isIncludedPath(x.path));
+  if (!entries.length) entries = files.map(f => ({ file: f, path: rel(f) })).filter(x => /^[^/]+\.md$/i.test(x.path));
+  const gitConfig = files.find(f => rel(f) === '.git/config'), gitHead = files.find(f => rel(f) === '.git/HEAD');
+  if (gitConfig) project.detected.repo = parseGitConfig(await gitConfig.text());
+  if (gitHead) project.detected.branch = parseGitHead(await gitHead.text());
+  const appNames = new Set(files.map(f => /^apps\/([^/]+)\//.exec(rel(f))).filter(Boolean).map(m => m[1]).filter(n => !VALIDATORS.appName(n)));
+  if (appNames.size) project.detected.apps = [...appNames].sort();
+  readFiles(entries, rootName === 'docs' ? '' : rootName);
+  e.target.value = '';
+});
+
+const dz = $('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('drag-over');
+  readFiles(Array.from(e.dataTransfer.files).filter(f => /\.(md|markdown|txt)$/i.test(f.name)).map(f => ({ file: f, path: f.name })));
+});
+
+// ═══════════════════════════════════════════════════════
+// QUEUE
+// ═══════════════════════════════════════════════════════
+function docStatus(doc) {
+  const total = doc.items.length, done = Object.keys(doc.state.decisions).length;
+  return { total, done, pct: total ? Math.round(done / total * 100) : 0, status: done === 0 ? 'notstarted' : done < total ? 'inprogress' : 'complete' };
+}
+
+function docPlaceholderCounts(doc) {
+  let open = 0, answered = 0;
+  doc.items.forEach(it => placeholderStates(it, setup, doc.state.fills[it.key]).forEach(s => { if (s.value) answered++; else open++; }));
+  return { open, answered };
+}
+
+function buildSetupCard() {
+  const s = setupStatus(setup);
+  const status = !hasSetupContent(setup) ? 'notstarted' : s.done < s.total ? 'inprogress' : 'complete';
+  const card = document.createElement('div');
+  card.className = 'doc-card setup-card status-' + status;
+  const pct = Math.round(s.done / s.total * 100);
+  card.innerHTML =
+    '<div class="doc-card-top"><div class="doc-card-icon">⚙️</div><div class="doc-card-meta">' +
+    '<div class="doc-card-name">Project setup</div>' +
+    '<div class="doc-card-type">Repo, owners, apps and conventions used across the docs and config</div></div></div>' +
+    '<div class="doc-card-chips"><span class="chip">' + setup.apps.length + ' app' + (setup.apps.length !== 1 ? 's' : '') + '</span>' +
+    (s.errors ? '<span class="chip chip-ph">' + s.errors + ' to fix</span>' : '') + '</div>' +
+    '<div class="doc-card-status"><div class="doc-card-progress"><div class="doc-card-progress-fill" style="width:' + pct + '%"></div></div><span class="doc-card-pct">' + s.done + '/' + s.total + '</span></div>' +
+    '<button class="btn-review ' + (status === 'notstarted' ? 'btn-review-start' : status === 'complete' ? 'btn-review-revisit' : 'btn-review-continue') + '">' +
+    (status === 'notstarted' ? 'Fill in setup →' : status === 'complete' ? 'Edit →' : 'Continue →') + '</button>';
+  card.querySelector('.btn-review').addEventListener('click', openSetup);
+  return card;
+}
+
+function buildQueue() {
+  const grid = $('queue-grid'); grid.innerHTML = '';
+  $('queue-title').textContent = project.name || 'Project Documents';
+  const totals = docs.reduce((t, d) => { const c = docPlaceholderCounts(d); t.open += c.open; t.answered += c.answered; return t; }, { open: 0, answered: 0 });
+  $('queue-sub').textContent = docs.length + ' docs' + (totals.open ? ' · ' + totals.open + ' open placeholders' : '') + (totals.answered ? ' · ' + totals.answered + ' answered' : '');
+  grid.appendChild(buildSetupCard());
+
+  docs.forEach((doc, di) => {
+    const s = docStatus(doc);
+    const ph = docPlaceholderCounts(doc);
+    const tbd = doc.items.reduce((n, it) => n + it.tbd, 0);
+    const card = document.createElement('div');
+    card.className = 'doc-card status-' + s.status;
+    const btnLabel = s.status === 'notstarted' ? 'Start review →' : s.status === 'complete' ? 'Revisit →' : 'Continue →';
+    const btnCls = s.status === 'notstarted' ? 'btn-review-start' : s.status === 'complete' ? 'btn-review-revisit' : 'btn-review-continue';
+    card.innerHTML =
+      '<div class="doc-card-top"><div class="doc-card-icon">' + doc.typeConfig.icon + '</div><div class="doc-card-meta">' +
+      '<div class="doc-card-name" title="' + esc(doc.path) + '">' + esc(doc.path) + '</div>' +
+      '<div class="doc-card-type">' + doc.typeConfig.label + ' · ' + s.total + ' item' + (s.total !== 1 ? 's' : '') + (doc.meta.status ? ' · ' + esc(doc.meta.status) : '') + '</div></div></div>' +
+      '<div class="doc-card-chips">' +
+      (ph.open ? '<span class="chip chip-ph">' + ph.open + ' open placeholder' + (ph.open !== 1 ? 's' : '') + '</span>' : '') +
+      (ph.answered ? '<span class="chip chip-ok">' + ph.answered + ' answered</span>' : '') +
+      (tbd ? '<span class="chip chip-tbd">' + tbd + ' TBD</span>' : '') +
+      (doc.state.added.length ? '<span class="chip chip-added">+' + doc.state.added.length + ' added</span>' : '') +
+      '</div>' +
+      (doc.stale ? '<div class="doc-card-note">' + doc.stale + ' earlier answer' + (doc.stale !== 1 ? 's were' : ' was') + ' cleared because the text changed.</div>' : '') +
+      '<div class="doc-card-status"><div class="doc-card-progress"><div class="doc-card-progress-fill" style="width:' + s.pct + '%"></div></div><span class="doc-card-pct">' + s.done + '/' + s.total + '</span></div>' +
+      '<div class="verdict-row"><label for="verdict-' + di + '">Verdict</label><select class="field-select" id="verdict-' + di + '"><option value="">Not given</option>' +
+      VERDICTS.map(v => '<option' + (doc.state.verdict === v ? ' selected' : '') + '>' + v + '</option>').join('') + '</select></div>' +
+      '<button class="btn-review ' + btnCls + '"' + (s.total ? '' : ' disabled') + '>' + (s.total ? btnLabel : 'Nothing to review') + '</button>';
+    card.querySelector('.btn-review').addEventListener('click', () => openDocReview(di));
+    card.querySelector('select').addEventListener('change', e => { doc.state.verdict = e.target.value; saveState(doc); });
+    grid.appendChild(card);
+  });
+  showScreen('queue-screen');
+}
+
+$('queue-restart-btn').addEventListener('click', () => {
+  docs = []; project = { name: '', rootName: '', docsDir: null, docsDirPath: '', detected: {} }; setup = newSetup();
+  showScreen('upload-screen');
+});
+$('queue-clear-btn').addEventListener('click', () => {
+  if (!confirm('Clear the project setup and all saved decisions, fills, added items and verdicts for "' + project.name + '" in this browser? This cannot be undone.')) return;
+  docs.forEach(doc => { localStorage.removeItem(storeKey(doc)); doc.state = { decisions: {}, added: [], verdict: '', fills: {} }; doc.stale = 0; });
+  localStorage.removeItem(setupKey()); loadSetup();
+  $('save-indicator').textContent = 'Progress cleared';
+  buildQueue();
+});
+$('queue-export-btn').addEventListener('click', buildExport);
+
+// ═══════════════════════════════════════════════════════
+// PROJECT SETUP
+// ═══════════════════════════════════════════════════════
+function openSetup() { renderSetupForm(); showScreen('setup-screen'); }
+$('setup-back-btn').addEventListener('click', buildQueue);
+
+function updateSetupProgress() {
+  const s = setupStatus(setup);
+  $('setup-progress').textContent = s.done + ' / ' + s.total + ' required' + (s.errors ? ' · ' + s.errors + ' to fix' : '');
+}
+
+function el(tag, attrs, html) {
+  const e = document.createElement(tag);
+  Object.entries(attrs || {}).forEach(([k, v]) => { if (k === 'class') e.className = v; else e.setAttribute(k, v); });
+  if (html !== undefined) e.innerHTML = html;
+  return e;
+}
+
+function renderSetupForm() {
+  const form = $('setup-form'); form.innerHTML = '';
+  form.appendChild(el('div', { class: 'setup-intro' },
+    'These facts appear in many files, including some this tool does not show (CODEOWNERS, CI, Dependabot, the GitHub setup script). Export creates <code>docs/reviews/&lt;date&gt;-project-setup.md</code>, which the agent applies everywhere. Answers save as you type.'));
+
+  for (const g of SETUP_GROUPS) {
+    const sec = el('div', { class: 'setup-section' });
+    sec.appendChild(el('h2', {}, esc(g.title)));
+    sec.appendChild(el('p', { class: 'hint' }, esc(g.hint)));
+    const grid = el('div', { class: 'setup-grid' });
+    for (const f of g.fields) grid.appendChild(renderSetupField(f));
+    sec.appendChild(grid);
+    form.appendChild(sec);
+  }
+  form.appendChild(renderListSection('apps'));
+  form.appendChild(renderListSection('packages'));
+  updateSetupProgress();
+}
+
+function renderSetupField(f) {
+  const wrap = el('div', { class: 'setup-field' + (f.full ? ' full' : '') });
+  const id = 'setup-' + f.key.replace('.', '-');
+  wrap.appendChild(el('label', { class: 'field-label', for: id }, esc(f.label) + (f.required ? ' <span class="req">*</span>' : '')));
+  let input;
+  if (f.type === 'license') {
+    input = el('input', { class: 'field-input', id, list: 'license-options', placeholder: 'Choose or type' });
+    if (!$('license-options')) {
+      const dl = el('datalist', { id: 'license-options' });
+      LICENSES.forEach(l => dl.appendChild(el('option', { value: l })));
+      document.body.appendChild(dl);
+    }
+  } else {
+    input = el('input', { class: 'field-input', id, placeholder: f.placeholder || '' });
+  }
+  input.value = setup.values[f.key] || '';
+  const err = el('div', { class: 'field-error' });
+  const src = el('div', { class: 'field-source' }, setup.sources[f.key] ? esc(setup.sources[f.key]) : '');
+  const validate = show => {
+    const e = fieldError(f, input.value);
+    const visible = show && e && !(e === 'Required' && !input.value);
+    err.textContent = visible ? e : '';
+    input.classList.toggle('invalid', !!visible);
+  };
+  input.addEventListener('input', () => {
+    setup.values[f.key] = input.value;
+    delete setup.sources[f.key]; src.textContent = '';
+    saveSetup(); validate(false); updateSetupProgress();
+  });
+  input.addEventListener('blur', () => validate(true));
+  validate(true);
+  wrap.appendChild(input); wrap.appendChild(err); wrap.appendChild(src);
+  return wrap;
+}
+
+function renderListSection(kind) {
+  const isApps = kind === 'apps';
+  const sec = el('div', { class: 'setup-section' });
+  sec.appendChild(el('h2', {}, isApps ? 'Apps <span class="req">*</span>' : 'Shared packages'));
+  sec.appendChild(el('p', { class: 'hint' }, isApps
+    ? 'One row per deployable app in <code>apps/</code>. The name is the folder name and is used for labels, CI jobs, commit scopes and release tags. Code owner falls back to the default code owner.'
+    : 'Optional. One row per shared package in <code>packages/</code>, e.g. <code>api-contract</code>.'));
+  if (isApps && setup.sources.apps) sec.appendChild(el('div', { class: 'field-source' }, esc(setup.sources.apps) + '; set each app\'s kind.'));
+  const body = el('div');
+  sec.appendChild(body);
+  const list = setup[kind];
+
+  const draw = () => {
+    body.innerHTML = '';
+    const errs = listErrors(setup);
+    if (!list.length) body.appendChild(el('div', { class: 'list-empty' }, isApps ? 'No apps yet.' : 'No shared packages.'));
+    else {
+      const head = el('div', { class: 'list-row' + (isApps ? '' : ' two') });
+      ['Name', isApps ? 'Kind' : null, 'Code owner', ''].filter(x => x !== null).forEach(h => head.appendChild(el('div', { class: 'list-head' }, h)));
+      body.appendChild(head);
+    }
+    list.forEach((row, i) => {
+      const r = el('div', { class: 'list-row' + (isApps ? '' : ' two') });
+      const cellWith = (input, errKey) => {
+        const c = el('div'); c.appendChild(input);
+        const e = errs[kind + '.' + i + '.' + errKey];
+        if (e && !(e === 'Required' && !input.value)) { c.appendChild(el('div', { class: 'field-error' }, esc(e))); input.classList.add('invalid'); }
+        return c;
+      };
+      const name = el('input', { class: 'field-input', placeholder: isApps ? 'e.g. web' : 'e.g. api-contract', 'aria-label': 'Name' });
+      name.value = row.name || '';
+      name.addEventListener('change', () => { row.name = name.value.trim().toLowerCase(); saveSetup(); updateSetupProgress(); draw(); });
+      r.appendChild(cellWith(name, 'name'));
+      if (isApps) {
+        const kindSel = el('select', { class: 'field-select', 'aria-label': 'Kind' });
+        kindSel.appendChild(el('option', { value: '' }, 'Choose…'));
+        APP_KINDS.forEach(k => { const o = el('option', { value: k }, esc(k)); if (row.kind === k) o.selected = true; kindSel.appendChild(o); });
+        kindSel.addEventListener('change', () => { row.kind = kindSel.value; saveSetup(); updateSetupProgress(); draw(); });
+        r.appendChild(cellWith(kindSel, 'kind'));
+      }
+      const owner = el('input', { class: 'field-input', placeholder: '@username (optional)', 'aria-label': 'Code owner' });
+      owner.value = row.owner || '';
+      owner.addEventListener('change', () => { row.owner = owner.value.trim(); saveSetup(); updateSetupProgress(); draw(); });
+      r.appendChild(cellWith(owner, 'owner'));
+      const rm = el('button', { class: 'btn-rm', 'aria-label': 'Remove', title: 'Remove' }, '×');
+      rm.addEventListener('click', () => { list.splice(i, 1); saveSetup(); updateSetupProgress(); draw(); });
+      r.appendChild(rm);
+      body.appendChild(r);
+    });
+    const add = el('button', { class: 'btn-ghost' }, isApps ? '+ Add app' : '+ Add package');
+    add.addEventListener('click', () => {
+      list.push(isApps ? { name: '', kind: '', owner: '' } : { name: '', owner: '' });
+      saveSetup(); updateSetupProgress(); draw();
+      // Each row has two text inputs (name, owner); focus the new row's name.
+      const inputs = body.querySelectorAll('.list-row input');
+      if (inputs.length >= 2) inputs[inputs.length - 2].focus();
+    });
+    body.appendChild(add);
+  };
+  draw();
+  return sec;
+}
+
+// ═══════════════════════════════════════════════════════
+// REVIEW
+// ═══════════════════════════════════════════════════════
+// Escapes text and marks TBDs and placeholders. Placeholders are matched to their
+// states in order, so ctx.n counts occurrences across calls for one item.
+function highlightWith(text, ctx) {
+  const html = esc(text).replace(/\bTBD\b/g, '<mark class="tbd" title="Open decision">TBD</mark>');
+  return html.replace(/(^|[^$])(\{\{[^{}\n]*\}\})/g, (m, pre, tok) => {
+    const s = ctx.states[ctx.n++];
+    const title = !s ? 'Unfilled placeholder' : s.source === 'setup' ? 'Answered in project setup: ' + s.value : s.source === 'fill' ? 'Filled in: ' + s.value : 'Unfilled placeholder';
+    return pre + '<mark class="ph' + (s && s.value ? ' ok' : '') + '" title="' + esc(title) + '">' + tok + '</mark>';
+  });
+}
+
+function openDocReview(di) {
+  currentDocIdx = di; currentItemIdx = 0;
+  const doc = docs[di];
+  const firstOpen = doc.items.findIndex(it => !doc.state.decisions[it.key]);
+  if (firstOpen > 0) currentItemIdx = firstOpen;
+  $('rev-title').textContent = doc.path;
+  const tb = $('rev-type-badge');
+  tb.textContent = doc.typeConfig.label; tb.style.background = doc.typeConfig.colorBg; tb.style.color = doc.typeConfig.color;
+  buildReviewSidebar();
+  renderItem();
+  showScreen('review-screen');
+}
+
+function itemHasOpenPlaceholders(doc, item) {
+  return placeholderStates(item, setup, doc.state.fills[item.key]).some(s => !s.value);
+}
+
+function buildReviewSidebar() {
+  const sb = $('sidebar'); sb.innerHTML = '';
+  const doc = docs[currentDocIdx]; let lastSec = null;
+  doc.items.forEach((item, idx) => {
+    if (item.section !== lastSec) {
+      const h = document.createElement('div'); h.className = 'sidebar-section';
+      h.textContent = item.section || 'Top'; h.title = item.section;
+      sb.appendChild(h); lastSec = item.section;
+    }
+    const e = document.createElement('div'); e.className = 'sb-item'; e.id = 'sb-' + idx;
+    e.innerHTML = '<div class="dot"></div><span class="sb-label">' + (item.id ? '<span class="sb-id">' + esc(item.id) + '</span>' : '') + esc(item.title) + '</span>' +
+      '<span class="sb-ph" title="Open placeholder"' + (itemHasOpenPlaceholders(doc, item) ? '' : ' hidden') + '>{…}</span>';
+    e.addEventListener('click', () => { currentItemIdx = idx; renderItem(); });
+    sb.appendChild(e);
+  });
+  rebuildAddedSidebar();
+}
+
+function rebuildAddedSidebar() {
+  const sb = $('sidebar');
+  sb.querySelectorAll('.sb-added').forEach(e => e.remove());
+  const doc = docs[currentDocIdx]; if (!doc || !doc.state.added.length) return;
+  const h = document.createElement('div'); h.className = 'sidebar-section sb-added'; h.textContent = '+ Added'; sb.appendChild(h);
+  doc.state.added.forEach(ai => {
+    const e = document.createElement('div'); e.className = 'sb-item d3 sb-added';
+    e.innerHTML = '<div class="dot"></div><span class="sb-label">' + esc(ai.title) + '</span>';
+    e.addEventListener('click', openAddPanel);
+    sb.appendChild(e);
+  });
+}
+
+function updateSidebarItem(idx) {
+  const e = $('sb-' + idx); if (!e) return;
+  const doc = docs[currentDocIdx], item = doc.items[idx], d = doc.state.decisions[item.key];
+  e.className = 'sb-item' + (idx === currentItemIdx ? ' active' : '') + (d ? ' ' + d.d : '');
+  const ph = e.querySelector('.sb-ph'); if (ph) ph.hidden = !itemHasOpenPlaceholders(doc, item);
+}
+
+function updateProgress() {
+  const doc = docs[currentDocIdx], s = docStatus(doc);
+  $('rev-progress-fill').style.width = s.pct + '%';
+  $('rev-progress').textContent = s.done + ' / ' + s.total;
+}
+
+// Content and placeholder chips; re-rendered as fill-in values are typed.
+function renderItemContent() {
+  const doc = docs[currentDocIdx], item = doc.items[currentItemIdx];
+  const states = placeholderStates(item, setup, doc.state.fills[item.key]);
+  const ctx = { states, n: 0 };
+  const content = $('item-content');
+  if (item.kind === 'row' && item.headers.length) {
+    content.innerHTML = '<div class="kv">' + item.headers.map((h, k) =>
+      '<div class="k">' + esc(h || 'Column ' + (k + 1)) + '</div><div class="v">' + (highlightWith(item.cells[k] || '', ctx) || '—') + '</div>').join('') + '</div>';
+  } else {
+    content.innerHTML = highlightWith(item.content.replace(/^\s*([-*+]|\d+[.)])\s+(\[[ xX]\]\s*)?/, ''), ctx) || '(No detail)';
+  }
+
+  const mr = $('item-meta-row'); mr.innerHTML = '';
+  const chip = (text, cls) => { const c = document.createElement('span'); c.className = 'chip ' + (cls || ''); c.textContent = text; mr.appendChild(c); };
+  chip('line ' + item.line);
+  const open = states.filter(s => !s.value).length, fromSetup = states.filter(s => s.source === 'setup').length, filled = states.filter(s => s.source === 'fill').length;
+  if (open) chip(open + ' open placeholder' + (open !== 1 ? 's' : ''), 'chip-ph');
+  if (fromSetup) chip(fromSetup + ' answered in setup', 'chip-ok');
+  if (filled) chip(filled + ' filled in', 'chip-ok');
+  const unanswered = states.filter(s => s.fact && !s.value);
+  if (unanswered.length) chip(unanswered.length + ' answerable in project setup');
+  if (item.tbd) chip(item.tbd + ' TBD', 'chip-tbd');
+  if (item.checked !== undefined) chip(item.checked ? 'Checklist: ticked' : 'Checklist: unticked');
+  updateSidebarItem(currentItemIdx);
+}
+
+function renderFillPanel() {
+  const doc = docs[currentDocIdx], item = doc.items[currentItemIdx];
+  const states = placeholderStates(item, setup, doc.state.fills[item.key]);
+  const fillable = states.filter(s => !s.fact && isShortPlaceholder(s.token));
+  const rows = $('fill-rows'); rows.innerHTML = '';
+  $('fill-panel').hidden = !fillable.length;
+  const saved = doc.state.fills[item.key];
+  for (const s of fillable) {
+    const r = el('div', { class: 'fill-row' });
+    const id = 'fill-' + s.i;
+    r.appendChild(el('label', { class: 'fill-label', for: id }, (s.col ? esc(s.col) + ': ' : '') + '<code>' + esc(s.token) + '</code>'));
+    const input = el('input', { class: 'field-input', id, placeholder: 'Value' });
+    input.value = (saved && saved.values && saved.values[s.i]) || '';
+    input.addEventListener('input', () => {
+      const f = doc.state.fills[item.key] || (doc.state.fills[item.key] = { hash: item.hash, values: {} });
+      f.hash = item.hash;
+      if (input.value.trim()) f.values[s.i] = input.value; else delete f.values[s.i];
+      if (!Object.keys(f.values).length) delete doc.state.fills[item.key];
+      saveState(doc);
+      renderItemContent();
+    });
+    r.appendChild(input);
+    rows.appendChild(r);
+  }
+}
+
+function renderItem() {
+  const doc = docs[currentDocIdx], item = doc.items[currentItemIdx]; if (!item) return;
+  doc.items.forEach((_, i) => updateSidebarItem(i));
+  const sbEl = $('sb-' + currentItemIdx); if (sbEl) sbEl.scrollIntoView({ block: 'nearest' });
+  const tc = doc.typeConfig;
+
+  $('item-badge').textContent = item.id || KIND_LABELS[item.kind] || 'ITEM';
+  $('item-section').textContent = item.section || '';
+  $('item-title').textContent = item.title;
+  renderItemContent();
+  renderFillPanel();
+
+  const s = docStatus(doc);
+  updateProgress();
+  $('nav-counter').textContent = (currentItemIdx + 1) + ' of ' + s.total;
+  $('prev-btn').disabled = currentItemIdx === 0;
+  $('next-btn').textContent = currentItemIdx === s.total - 1 ? 'Finish ✓' : 'Next →';
+
+  const dr = $('decision-row'); dr.innerHTML = '';
+  tc.decisions.forEach((dec, n) => {
+    const btn = document.createElement('button'); btn.className = 'btn-d ' + dec.cls; btn.dataset.key = dec.key;
+    btn.textContent = dec.label; btn.title = 'Shortcut: ' + (n + 1);
+    btn.addEventListener('click', () => handleDecision(dec));
+    dr.appendChild(btn);
+  });
+
+  $('expand-panel').hidden = true;
+  const d = doc.state.decisions[item.key];
+  if (d) {
+    const btn = dr.querySelector('[data-key="' + d.d + '"]'); if (btn) btn.classList.add('sel');
+    const dec = tc.decisions.find(x => x.key === d.d);
+    if (dec && dec.expandNote) showExpandPanel(dec, d.note || '', d.extra || '', false);
+  }
+  $('main-area').scrollTop = 0;
+}
+
+function handleDecision(dec) {
+  const doc = docs[currentDocIdx], item = doc.items[currentItemIdx];
+  const prev = doc.state.decisions[item.key];
+  const keepNotes = prev && prev.d === dec.key;
+  doc.state.decisions[item.key] = { d: dec.key, note: keepNotes ? prev.note : '', extra: keepNotes ? prev.extra : '', hash: item.hash };
+  saveState(doc);
+  $('decision-row').querySelectorAll('.btn-d').forEach(b => b.classList.toggle('sel', b.dataset.key === dec.key));
+  updateSidebarItem(currentItemIdx); updateProgress();
+  if (dec.expandNote) {
+    showExpandPanel(dec, keepNotes ? prev.note : '', keepNotes ? prev.extra : '', true);
+  } else {
+    $('expand-panel').hidden = true;
+    setTimeout(() => { if (currentItemIdx < doc.items.length - 1) { currentItemIdx++; renderItem(); } else finishDoc(); }, 180);
+  }
+}
+
+function showExpandPanel(dec, note, extra, focus) {
+  $('expand-panel').hidden = false;
+  $('expand-label').textContent = dec.expandNote;
+  $('expand-text').value = note;
+  $('expand-extra').hidden = !dec.expandExtra;
+  if (dec.expandExtra) { $('expand-extra-label').textContent = dec.expandExtra; $('expand-extra-text').value = extra; }
+  if (focus) setTimeout(() => $('expand-text').focus(), 50);
+}
+
+function currentDecision() { const doc = docs[currentDocIdx]; return doc.state.decisions[doc.items[currentItemIdx].key]; }
+$('expand-text').addEventListener('input', e => { const d = currentDecision(); if (d) { d.note = e.target.value; saveState(docs[currentDocIdx]); } });
+$('expand-extra-text').addEventListener('input', e => { const d = currentDecision(); if (d) { d.extra = e.target.value; saveState(docs[currentDocIdx]); } });
+$('prev-btn').addEventListener('click', () => { if (currentItemIdx > 0) { currentItemIdx--; renderItem(); } });
+$('next-btn').addEventListener('click', () => { const doc = docs[currentDocIdx]; if (currentItemIdx < doc.items.length - 1) { currentItemIdx++; renderItem(); } else finishDoc(); });
+$('rev-queue-btn').addEventListener('click', finishDoc);
+function finishDoc() { closeAddPanel(); buildQueue(); }
+
+// ═══════════════════════════════════════════════════════
+// ADD PANEL
+// ═══════════════════════════════════════════════════════
+$('rev-add-btn').addEventListener('click', openAddPanel);
+$('close-add-panel').addEventListener('click', closeAddPanel);
+$('add-overlay').addEventListener('click', closeAddPanel);
+
+function openAddPanel() {
+  const doc = docs[currentDocIdx];
+  $('add-panel-title').textContent = 'Add to ' + doc.path;
+  $('add-item-label').textContent = doc.typeConfig.addLabel || 'New item';
+  const sel = $('add-section-select'); sel.innerHTML = '';
+  const sections = [...doc.sections];
+  doc.state.added.forEach(ai => { if (ai.section && !sections.includes(ai.section)) sections.push(ai.section); });
+  if (!sections.length) sections.push('General');
+  sections.forEach(s => { const o = document.createElement('option'); o.value = s; o.textContent = s; sel.appendChild(o); });
+  const curSec = doc.items[currentItemIdx] && doc.items[currentItemIdx].section;
+  if (curSec && sections.includes(curSec)) sel.value = curSec;
+  $('add-item-text').value = ''; $('add-item-details').value = '';
+  $('new-section-row').hidden = true; $('new-section-input').value = '';
+  renderAddedList();
+  $('add-panel').classList.add('open'); $('add-overlay').classList.add('open');
+  setTimeout(() => $('add-item-text').focus(), 80);
+}
+
+function closeAddPanel() { $('add-panel').classList.remove('open'); $('add-overlay').classList.remove('open'); }
+
+$('add-new-section-btn').addEventListener('click', () => {
+  const row = $('new-section-row'); row.hidden = !row.hidden;
+  if (!row.hidden) $('new-section-input').focus();
+});
+$('new-section-input').addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  const v = e.target.value.trim(); if (!v) return;
+  const sel = $('add-section-select');
+  if (![...sel.options].some(o => o.value === v)) { const o = document.createElement('option'); o.value = v; o.textContent = v; sel.appendChild(o); }
+  sel.value = v; $('new-section-row').hidden = true; e.target.value = '';
+});
+
+$('add-submit-btn').addEventListener('click', () => {
+  const title = $('add-item-text').value.trim();
+  if (!title) { $('add-item-text').focus(); return; }
+  const doc = docs[currentDocIdx];
+  doc.state.added.push({ id: Date.now(), section: $('add-section-select').value, title, details: $('add-item-details').value.trim() });
+  saveState(doc);
+  $('add-item-text').value = ''; $('add-item-details').value = '';
+  renderAddedList(); rebuildAddedSidebar();
+});
+
+function renderAddedList() {
+  const doc = docs[currentDocIdx], list = $('added-items-list');
+  list.innerHTML = '';
+  $('added-items-section').hidden = !doc.state.added.length;
+  $('added-items-title').textContent = 'Added (' + doc.state.added.length + ')';
+  doc.state.added.forEach(ai => {
+    const row = document.createElement('div'); row.className = 'added-item-row';
+    row.innerHTML = '<div class="added-item-body"><div class="added-item-title">' + esc(ai.title) + '</div><div class="added-item-cat">' + esc(ai.section) + '</div>' +
+      (ai.details ? '<div class="added-item-details">' + esc(ai.details) + '</div>' : '') + '</div><button class="btn-rm" aria-label="Remove">×</button>';
+    row.querySelector('.btn-rm').addEventListener('click', () => {
+      doc.state.added = doc.state.added.filter(x => x.id !== ai.id);
+      saveState(doc); renderAddedList(); rebuildAddedSidebar();
+    });
+    list.appendChild(row);
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+// EXPORT
+// ═══════════════════════════════════════════════════════
+async function fileExists(dir, name) {
+  try { await dir.getFileHandle(name); return true; } catch (e) { return false; }
+}
+
+// Writes a review into docs/reviews/. Re-saving in the same session overwrites the
+// same file; otherwise an existing file of the same name gets a numeric suffix.
+async function saveReviewToFolder(target, md, date) {
+  const perm = await project.docsDir.requestPermission({ mode: 'readwrite' });
+  if (perm !== 'granted') throw new Error('Permission to write to the folder was not granted.');
+  const dir = await project.docsDir.getDirectoryHandle('reviews', { create: true });
+  let name = target.savedName;
+  if (!name) {
+    let n = 1;
+    do { name = reviewFileName(target.path, date, n++); } while (await fileExists(dir, name));
+  }
+  const fh = await dir.getFileHandle(name, { create: true });
+  const w = await fh.createWritable(); await w.write(md); await w.close();
+  target.savedName = name;
+  return project.docsDirPath + 'reviews/' + name;
+}
+
+function downloadFile(name, text) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type: 'text/markdown' }));
+  a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function buildExport() {
+  const date = localDate();
+  const reviewer = $('reviewer-input').value.trim();
+  const container = $('output-sections'); container.innerHTML = '';
+  const canSave = !!(project.docsDir && project.docsDir.requestPermission);
+  const reviewsPath = (project.docsDirPath || '') + 'reviews/';
+
+  const outputs = [];
+  if (hasSetupContent(setup)) outputs.push({ target: SETUP_TARGET, md: buildSetupMarkdown(setup, { reviewer, date }) });
+  const t = { d0: 0, act: 0, added: 0, fills: 0 };
+  docs.filter(d => hasReviewContent(d.state)).forEach(doc => {
+    const vals = Object.values(doc.state.decisions);
+    t.d0 += vals.filter(v => v.d === 'd0').length; t.act += vals.filter(v => v.d !== 'd0').length;
+    t.added += doc.state.added.length;
+    t.fills += Object.values(doc.state.fills).reduce((n, f) => n + Object.keys(f.values || {}).length, 0);
+    outputs.push({ target: doc, md: buildReviewMarkdown(doc, doc.state, { reviewer, date, setup }) });
+  });
+
+  $('complete-stats').innerHTML = outputs.length
+    ? '<span class="chip chip-ok">✓ ' + t.d0 + ' accepted</span><span class="chip chip-tbd">' + t.act + ' need action</span>' +
+      (t.added ? '<span class="chip chip-added">+' + t.added + ' added</span>' : '') + (t.fills ? '<span class="chip chip-ok">' + t.fills + ' placeholders filled</span>' : '')
+    : '';
+  $('export-intro').textContent = !reviewer
+    ? 'Tip: add your name on the start screen so reviews record who made them (it is remembered in this browser).'
+    : canSave
+      ? 'Each reviewed document, and the project setup, gets one review file in ' + reviewsPath + '. Commit them, then ask the agent to apply open reviews.'
+      : 'Download the review files and move them into docs/reviews/ in the project, commit them, then ask the agent to apply open reviews.';
+
+  const actions = $('export-actions'); actions.innerHTML = '';
+  if (!outputs.length) {
+    container.innerHTML = '<div class="empty-note">Nothing to export yet. Fill in the project setup, or record at least one decision, placeholder value, added item or verdict.</div>';
+    showScreen('complete-screen'); return;
+  }
+
+  const rows = outputs.map(({ target, md }) => {
+    const name = target.savedName || reviewFileName(target.path, date);
+    const sec = document.createElement('div'); sec.className = 'output-section';
+    sec.innerHTML = '<div class="output-section-header"><span class="name">' + esc(reviewsPath + name) + '</span><span class="output-status"></span>' +
+      (canSave ? '<button class="btn-ghost act-save">Save</button>' : '') + '<button class="btn-ghost act-dl">Download</button><button class="btn-ghost act-copy">Copy</button></div>';
+    const pre = document.createElement('pre'); pre.className = 'output-pre'; pre.textContent = md; sec.appendChild(pre);
+    const status = sec.querySelector('.output-status');
+    const setStatus = (text, cls) => { status.textContent = text; status.className = 'output-status ' + (cls || ''); };
+    const save = async () => {
+      try { const p = await saveReviewToFolder(target, md, date); sec.querySelector('.name').textContent = p; setStatus('✓ Saved', 'ok'); }
+      catch (e) { setStatus('Save failed: ' + e.message, 'err'); }
+    };
+    if (canSave) sec.querySelector('.act-save').addEventListener('click', save);
+    sec.querySelector('.act-dl').addEventListener('click', () => { downloadFile(name, md); setStatus('Downloaded'); });
+    sec.querySelector('.act-copy').addEventListener('click', () => navigator.clipboard.writeText(md).then(() => setStatus('Copied'), () => setStatus('Copy failed', 'err')));
+    container.appendChild(sec);
+    return { save, md, name };
+  });
+
+  const allBtn = document.createElement('button'); allBtn.className = 'btn-primary';
+  if (canSave) {
+    allBtn.textContent = 'Save all to ' + reviewsPath;
+    allBtn.addEventListener('click', async () => { for (const r of rows) await r.save(); });
+  } else {
+    allBtn.textContent = 'Download all';
+    allBtn.addEventListener('click', () => rows.forEach((r, i) => setTimeout(() => downloadFile(r.name, r.md), i * 300)));
+  }
+  actions.appendChild(allBtn);
+  showScreen('complete-screen');
+}
+$('export-back-btn').addEventListener('click', buildQueue);
+
+// ═══════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════
+const SCREENS = ['upload-screen', 'queue-screen', 'setup-screen', 'review-screen', 'complete-screen'];
+function showScreen(id) { SCREENS.forEach(s => { $(s).hidden = s !== id; }); }
+function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+document.addEventListener('keydown', e => {
+  if ($('review-screen').hidden) return;
+  if (e.key === 'Escape') { closeAddPanel(); return; }
+  if ($('add-panel').classList.contains('open')) return;
+  if (['TEXTAREA', 'INPUT', 'SELECT', 'BUTTON'].includes(e.target.tagName) && e.key === 'Enter') return;
+  if (['TEXTAREA', 'INPUT', 'SELECT'].includes(e.target.tagName)) return;
+  const tc = docs[currentDocIdx] && docs[currentDocIdx].typeConfig; if (!tc) return;
+  if (e.key === 'ArrowRight' || e.key === 'Enter') $('next-btn').click();
+  else if (e.key === 'ArrowLeft') $('prev-btn').click();
+  else if (['1', '2', '3'].includes(e.key) && tc.decisions[+e.key - 1]) handleDecision(tc.decisions[+e.key - 1]);
+  else if (e.key === 'a' || e.key === 'A') { e.preventDefault(); openAddPanel(); }
+});
+</script>
+</body>
+</html>

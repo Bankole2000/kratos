@@ -1,0 +1,79 @@
+# Patterns without a leading slash match in every app folder.
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Mobile and desktop signing material (keep in a secret store, never in git)
+*.jks
+*.keystore
+!debug.keystore
+*.p8
+*.p12
+*.pfx
+*.mobileprovision
+*.provisionprofile
+*.cer
+
+# Infrastructure state and local variables (state lives in a remote backend)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+.pulumi/
+cdk.out/
+
+# Dependencies
+node_modules/
+.venv/
+venv/
+Pods/
+
+# Build output
+dist/
+build/
+out/
+.next/
+.expo/
+.cxx/
+DerivedData/
+*.tsbuildinfo
+
+# Monorepo tool caches
+.turbo/
+.nx/cache/
+.nx/workspace-data/
+
+# Test and tool caches
+coverage/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+__pycache__/
+playwright-report/
+test-results/
+.gradle/
+.kotlin/
+
+# Logs
+*.log
+logs/
+
+# Editors and OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+xcuserdata/
+*.xcuserstate
+local.properties
+.DS_Store
+Thumbs.db
+
+# Claude Code personal settings
+.claude/settings.local.json

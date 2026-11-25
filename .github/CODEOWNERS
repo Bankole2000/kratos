@@ -1,0 +1,24 @@
+# Owners are requested for review automatically. With branch protection set to
+# "Require review from Code Owners", their approval is required to merge.
+# Later lines take precedence. Replace placeholders with real GitHub usernames or
+# @org/team names, and add or remove lines to match apps/ and packages/.
+
+# Default owner for everything not matched below
+* @{{default-owner}}
+
+# Apps
+/apps/{{app 1, e.g. web}}/ @{{owner}}
+/apps/{{app 2, e.g. api}}/ @{{owner}}
+/apps/{{app 3, e.g. mobile}}/ @{{owner}}
+
+# Shared code affects every consumer; one line per package if owners differ
+/packages/ @{{owner}}
+
+# Infrastructure and release automation: changes here reach production
+/infra/ @{{owner}}
+/.github/workflows/release.yml @{{release owner}}
+
+# Project rules and CI
+/docs/ @{{owner}}
+/AGENTS.md @{{owner}}
+/.github/ @{{owner}}

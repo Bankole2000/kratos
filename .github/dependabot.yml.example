@@ -1,0 +1,48 @@
+# Rename to dependabot.yml once your apps and package managers exist.
+# Keep the ecosystems you use and delete the rest.
+#
+# Workspaces with ONE root lockfile (pnpm/npm/yarn workspaces): use directory "/".
+# Apps with their OWN lockfiles: list them with "directories" (wildcards allowed).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+
+  # JavaScript/TypeScript workspace with a single root lockfile
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  # Python apps, each with its own requirements/lockfile
+  - package-ecosystem: pip
+    directories: ["/apps/*"]
+    schedule:
+      interval: weekly
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  # Infrastructure-as-code (Terraform shown; adjust to the ADR-002 tool)
+  - package-ecosystem: terraform
+    directory: /infra
+    schedule:
+      interval: weekly
+
+  # Native Android (Gradle) — mobile app
+  - package-ecosystem: gradle
+    directory: /apps/mobile/android
+    schedule:
+      interval: weekly
+
+  # Native iOS (Swift Package Manager) — mobile app. Dependabot does not
+  # support CocoaPods; update Podfile.lock manually or with a scheduled job.
+  - package-ecosystem: swift
+    directory: /apps/mobile/ios
+    schedule:
+      interval: weekly
