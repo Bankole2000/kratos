@@ -102,11 +102,11 @@ Install everything (repo root): `pnpm install` (Cargo fetches Rust dependencies 
 | app | `pnpm --filter app tauri dev` (Android: `tauri android dev`; iOS: `tauri ios dev`) | `pnpm --filter app test` | TBD (ADR in M0) | `pnpm --filter app lint` | `pnpm --filter app typecheck` | `pnpm --filter app tauri build` | N/A |
 | ui | N/A | `pnpm --filter ui test` | N/A | `pnpm --filter ui lint` | `pnpm --filter ui typecheck` | N/A | N/A |
 | types | N/A | `cargo test -p types` | N/A | `cargo clippy -p types --all-targets -- -D warnings` | N/A (compiler) | N/A | N/A |
-| api-client-ts | N/A | N/A | N/A | N/A | `pnpm --filter api-client-ts typecheck` | `pnpm --filter api-client-ts generate` | N/A |
+| api-client-ts | N/A | `pnpm --filter api-client-ts test` (includes `check:generated`) | N/A | N/A (Prettier from the root) | `pnpm --filter api-client-ts typecheck` | N/A (consumed as source; regenerate with `pnpm --filter api-client-ts generate`) | N/A |
 | sdk-ts (M3) | N/A | `pnpm --filter sdk-ts test` | N/A | `pnpm --filter sdk-ts lint` | `pnpm --filter sdk-ts typecheck` | `pnpm --filter sdk-ts build` | N/A |
 | sdk-dart (M4) | N/A | `dart test` (in sdks/dart) | N/A | `dart analyze` | N/A | N/A | N/A |
 
-Generated files: `cargo run -p api -- openapi > openapi/openapi.json` (spec), `pnpm --filter api-client-ts generate` (TypeScript client), `cargo sqlx prepare --workspace -- --all-targets` (SQLx query data, including queries in tests; needs Postgres running). `cargo test -p api` fails when the committed spec is out of date (`apps/api/tests/openapi.rs`); run the spec command from the repo root in a POSIX shell such as Git Bash (Windows PowerShell 5.1 `>` writes UTF-16).
+Generated files: `cargo run -p api -- openapi > openapi/openapi.json` (spec), `pnpm --filter api-client-ts generate` (TypeScript client, from the committed spec), `cargo sqlx prepare --workspace -- --all-targets` (SQLx query data, including queries in tests; needs Postgres running). `cargo test -p api` fails when the committed spec is out of date (`apps/api/tests/openapi.rs`), and `pnpm --filter api-client-ts check:generated` (run by its `test`) when the client is out of date; run the spec command from the repo root in a POSIX shell such as Git Bash (Windows PowerShell 5.1 `>` writes UTF-16).
 
 Bruno (api): `pnpm bruno:run` runs the collection in `apps/api/bruno/` against a running api (`local` environment, `http://127.0.0.1:18080`); `pnpm bruno:check` fails when an endpoint in `openapi/openapi.json` has no request in the collection. See [Trying the api with Bruno](#trying-the-api-with-bruno).
 

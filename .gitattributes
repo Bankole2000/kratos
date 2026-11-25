@@ -34,3 +34,4 @@ Cargo.lock linguist-generated=true -diff
 pubspec.lock linguist-generated=true -diff
 openapi/openapi.json linguist-generated=true
 .sqlx/** linguist-generated=true
+packages/api-client-ts/src/generated/** linguist-generated=true
