@@ -43,10 +43,13 @@ async fn request_id_appears_in_the_log_line() {
         .header("x-request-id", "log-test-42");
     // No database needed: the pool is lazy and `/nope` never uses it.
     let pool = api::db::connect_lazy("postgres://postgres@127.0.0.1:1/unreachable").unwrap();
-    let response = api::app(api::AppState { db: pool })
-        .oneshot(request.body(Body::empty()).unwrap())
-        .await
-        .unwrap();
+    let response = api::app(
+        api::AppState { db: pool },
+        &api::config::default_cors_origins(),
+    )
+    .oneshot(request.body(Body::empty()).unwrap())
+    .await
+    .unwrap();
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
 
     let output = String::from_utf8(logs.0.lock().unwrap().clone()).unwrap();
