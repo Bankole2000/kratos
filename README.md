@@ -108,14 +108,14 @@ Install everything (repo root): `pnpm install` (Cargo fetches Rust dependencies 
 
 Generated files: `cargo run -p api -- openapi > openapi/openapi.json` (spec), `pnpm --filter api-client-ts generate` (TypeScript client), `cargo sqlx prepare --workspace -- --all-targets` (SQLx query data, including queries in tests; needs Postgres running). `cargo test -p api` fails when the committed spec is out of date (`apps/api/tests/openapi.rs`); run the spec command from the repo root in a POSIX shell such as Git Bash (Windows PowerShell 5.1 `>` writes UTF-16).
 
-Bruno (api): `pnpm bruno:run` runs the collection in `apps/api/bruno/` against a running api (`local` environment, `http://127.0.0.1:8080`); `pnpm bruno:check` fails when an endpoint in `openapi/openapi.json` has no request in the collection. See [Trying the api with Bruno](#trying-the-api-with-bruno).
+Bruno (api): `pnpm bruno:run` runs the collection in `apps/api/bruno/` against a running api (`local` environment, `http://127.0.0.1:18080`); `pnpm bruno:check` fails when an endpoint in `openapi/openapi.json` has no request in the collection. See [Trying the api with Bruno](#trying-the-api-with-bruno).
 
 Infrastructure: none yet (ADR-002, depends on D1).
 
 ## Trying the api with Bruno
 `apps/api/bruno/` is a [Bruno](https://www.usebruno.com/) collection for the api, in the OpenCollection YAML format that Bruno 4.x uses (one `.yml` file per request). Its requests carry assertions, so they double as smoke tests.
 
-- In the app: Bruno 4.x, **Open Collection**, choose `apps/api/bruno`, select the `local` environment (`baseUrl` = `http://127.0.0.1:8080`) and send a request.
+- In the app: Bruno 4.x, **Open Collection**, choose `apps/api/bruno`, select the `local` environment (`baseUrl` = `http://127.0.0.1:18080`) and send a request.
 - From the terminal: start the api (`cargo run -p api`), then `pnpm bruno:run`. It runs `bru run --env local` through `pnpm dlx @usebruno/cli@4.1.0`, so nothing is installed. Point it at another port with `pnpm bruno:run --env-var baseUrl=http://127.0.0.1:18080`.
 - Keeping it in step with the spec: the collection was generated from `openapi/openapi.json` with `bru import openapi` and then curated. Every new or changed endpoint adds its request (with assertions) in the same PR; `pnpm bruno:check` fails when one is missing. To start a request for a new endpoint, import the spec into a scratch folder (`pnpm dlx @usebruno/cli@4.1.0 import openapi --source openapi/openapi.json --output <scratch dir>`) and copy the generated `.yml` file across.
 - Secrets (keys, tokens, the admin password; none yet) never go in committed files: mark the variable **Secret** in the Bruno environment (its value stays on your machine), or put it in an untracked `apps/api/bruno/.env` (gitignored) and refer to it as `{{process.env.NAME}}`.
