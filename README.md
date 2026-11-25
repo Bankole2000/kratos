@@ -89,7 +89,7 @@ To avoid holding up building, the owner may approve a document as drafted and re
 ## Commands
 This table is the single source of truth for project commands. Other documents and agents refer here. Use the "All apps" row to check everything before a PR; use an app's row when working inside that app. There is one row per app, package with its own checks, and `infra`; add or delete rows to match. Write N/A where a command doesn't apply.
 
-The commands below are the intended ones. The root scripts exist since TASK-001, but the Cargo parts only run once the workspace has its first crate (TASK-002); TASK-010 verifies and corrects this table. Start Postgres first with `docker compose up -d`.
+The commands below are the intended ones. The root scripts and the api row work since TASK-002; rows for apps not created yet do not. TASK-010 verifies and corrects this table. Start Postgres first with `docker compose up -d` (from TASK-003).
 
 Install everything (repo root): `pnpm install` (Cargo fetches Rust dependencies on first build). Format everything: `pnpm format`.
 
