@@ -30,7 +30,10 @@ async fn send(app: Router, request: Request<Body>) -> (StatusCode, Option<String
 /// needed and any database call fails like a stopped Postgres would.
 fn app() -> Router {
     let pool = api::db::connect_lazy("postgres://postgres@127.0.0.1:1/unreachable").unwrap();
-    api::app(api::AppState { db: pool })
+    api::app(
+        api::AppState { db: pool },
+        &api::config::default_cors_origins(),
+    )
 }
 
 fn get_request(path: &str) -> Request<Body> {
@@ -114,7 +117,7 @@ async fn panic_returns_500_without_internal_details() {
     }
     let pool = api::db::connect_lazy("postgres://postgres@127.0.0.1:1/unreachable").unwrap();
     let routes = api::routes(api::AppState { db: pool }).route("/boom", get(boom));
-    let app = api::with_layers(routes);
+    let app = api::with_layers(routes, &api::config::default_cors_origins());
 
     let (status, request_id, body) = send(app, get_request("/boom")).await;
 

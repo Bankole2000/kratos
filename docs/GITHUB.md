@@ -1,6 +1,6 @@
 # GitHub Management Specification
 
-Status: Approved | Owner: @Bankole2000 | Version: 1.0 | Last updated: 2026-11-25
+Status: Approved | Owner: @Bankole2000 | Version: 1.1 | Last updated: 2026-11-25
 
 ## Configuration
 - Repository: Bankole2000/kratos (public)
@@ -81,7 +81,7 @@ One per app in `apps/`, plus labels for shared code, SDKs, infrastructure and re
 - The parent issue is Done when all sub-issues are Done and the end-to-end acceptance test passes.
 
 ## Execution lifecycle
-Todo + Approved + AI Ready Yes + completed dependencies → In Progress → In Review → Done (after approved merge). Blocked can interrupt any active stage; return to Todo or In Progress as appropriate after resolution. Changes Requested returns the issue to In Progress (see AGENTS.md). Re-review material changes.
+Todo + Approved + AI Ready Yes + completed dependencies → In Progress → In Review → Done (after approved merge). Early start (AGENTS.md, Execution rules 2): a task whose dependency is an open PR may go In Progress for the parts that don't need it; its PR stays a draft until the dependency is Done. Blocked can interrupt any active stage; return to Todo or In Progress as appropriate after resolution. Changes Requested returns the issue to In Progress (see AGENTS.md). Re-review material changes.
 
 ## Definition of ready
 Clear objective, requirement IDs, linked acceptance tests (TC IDs), bounded scope, testable acceptance criteria, known dependencies and resolved decisions.

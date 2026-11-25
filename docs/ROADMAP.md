@@ -1,6 +1,6 @@
 # Development Roadmap
 
-Status: Approved | Owner: @Bankole2000 | Version: 1.2 | Last updated: 2026-11-25
+Status: Approved | Owner: @Bankole2000 | Version: 1.3 | Last updated: 2026-11-25
 References: PRD.md, DESIGN.md, TECHNICAL.md, TESTING.md, platform-core.md section 7
 
 ## Milestones
@@ -28,15 +28,18 @@ Only M0 is planned in detail. Later milestones are broken down once the previous
 | TASK-005 | `packages/types` Rust crate with the first shared types, used by api | packages | — | TC-000 | M0 | TASK-001 | Medium | #6 |
 | TASK-006 | `packages/api-client-ts` generated from the spec (ADR-010 decided in this task) | packages | — | TC-000 | M0 | TASK-004 | High | #7 |
 | TASK-007 | `packages/ui` with Vuetify theme, layout shell (side rail and bottom bar) and a status screen that calls `/health` through the client | packages | FR-035 | TC-000 | M0 | TASK-006 | High | #8 |
-| TASK-008 | `apps/web` Nuxt 4 shell rendering the shared status screen | web | FR-035 | TC-000 | M0 | TASK-007 | High | #9 |
-| TASK-009 | `apps/app` Tauri 2 + Vue + Vite shell rendering the shared status screen on desktop; Android and iOS projects initialized and building in debug | app | FR-035 | TC-000 | M0 | TASK-007 | High | #10 |
+| TASK-008 | `apps/web` Nuxt 4 shell rendering the shared status screen | web | FR-035 | TC-000 | M0 | TASK-007, TASK-015 | High | #9 |
+| TASK-009 | `apps/app` Tauri 2 + Vue + Vite shell rendering the shared status screen on desktop; Android and iOS projects initialized and building in debug | app | FR-035 | TC-000 | M0 | TASK-007, TASK-015 | High | #10 |
 | TASK-010 | CI: rename and adapt `ci.yml.example` and `dependabot.yml.example` for api, web, app, packages and the generated-file checks; fill in the README Commands table | repo | — | TC-000 | M0 | TASK-003, TASK-004, TASK-008, TASK-009 | High | #11 |
 | TASK-011 | Personal local infrastructure: gitignored `docker-compose.override.yml` on top of `docker-compose.yml`, extra services commented out until needed | repo | — | TC-000 | M0 | TASK-003 | Medium | #17 |
 | TASK-012 | Dockerize api and web, with a committed `docker-compose.example.yml` that runs the whole stack | repo | — | TC-000 | M5 | TASK-003, TASK-008, D1 | Medium | #18 |
 | TASK-013 | Bruno collection for the api, generated from the OpenAPI spec and curated, with a drift check | api | NFR-001 | TC-036 | M0 | TASK-004 | Medium | #20 |
+| TASK-014 | api default port 18080 instead of 8080 | api | — | TC-000 | M0 | None | Medium | #24 |
+| TASK-015 | CORS on the api for the web and Tauri dashboard origins (`API_CORS_ORIGINS`) | api | FR-035 | TC-000 | M0 | None | High | #26 |
 
 ## Planning rules
 - Plan only the next useful milestone in detail; split large tasks.
+- Independent tasks run in parallel, one branch and PR each. A task may also start early on the parts that don't need an unmerged dependency (AGENTS.md, Execution rules 2).
 - Each task belongs to one app (or `packages`/`sdks`/`infra`/`repo`). A feature spanning apps becomes one task per app, ordered infrastructure → contract → servers → clients (see GITHUB.md, Multi-app work). Here that is usually api (which regenerates the contract) → packages/ui → web and app.
 - Learn Rust on the easy parts first: CRUD and reference data come before ingestion, batching and rate limiting (principle 23). Keep early api tasks small.
 - Signed builds for M5 need an Apple Developer account, a Google Play account and a Windows code-signing certificate, which can take days to weeks to obtain. Start them during M3 at the latest.
