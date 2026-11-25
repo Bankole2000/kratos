@@ -1,5 +1,8 @@
 # Patterns without a leading slash match in every app folder.
 
+# Personal local infrastructure (Docker Compose loads it on top of docker-compose.yml; README)
+docker-compose.override.yml
+
 # Environment and secrets
 .env
 .env.*

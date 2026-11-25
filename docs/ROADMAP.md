@@ -1,6 +1,6 @@
 # Development Roadmap
 
-Status: Approved | Owner: @Bankole2000 | Version: 1.1 | Last updated: 2026-11-25
+Status: Approved | Owner: @Bankole2000 | Version: 1.2 | Last updated: 2026-11-25
 References: PRD.md, DESIGN.md, TECHNICAL.md, TESTING.md, platform-core.md section 7
 
 ## Milestones
@@ -31,6 +31,9 @@ Only M0 is planned in detail. Later milestones are broken down once the previous
 | TASK-008 | `apps/web` Nuxt 4 shell rendering the shared status screen | web | FR-035 | TC-000 | M0 | TASK-007 | High | #9 |
 | TASK-009 | `apps/app` Tauri 2 + Vue + Vite shell rendering the shared status screen on desktop; Android and iOS projects initialized and building in debug | app | FR-035 | TC-000 | M0 | TASK-007 | High | #10 |
 | TASK-010 | CI: rename and adapt `ci.yml.example` and `dependabot.yml.example` for api, web, app, packages and the generated-file checks; fill in the README Commands table | repo | — | TC-000 | M0 | TASK-003, TASK-004, TASK-008, TASK-009 | High | #11 |
+| TASK-011 | Personal local infrastructure: gitignored `docker-compose.override.yml` on top of `docker-compose.yml`, extra services commented out until needed | repo | — | TC-000 | M0 | TASK-003 | Medium | #17 |
+| TASK-012 | Dockerize api and web, with a committed `docker-compose.example.yml` that runs the whole stack | repo | — | TC-000 | M5 | TASK-003, TASK-008, D1 | Medium | #18 |
+| TASK-013 | Bruno collection for the api, generated from the OpenAPI spec and curated, with a drift check | api | NFR-001 | TC-036 | M0 | TASK-004 | Medium | #20 |
 
 ## Planning rules
 - Plan only the next useful milestone in detail; split large tasks.
