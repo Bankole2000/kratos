@@ -16,7 +16,7 @@ describe('createApiClient', () => {
       baseUrl: 'http://localhost:3000',
       fetch: async (request) => {
         requests.push(request)
-        return jsonResponse(200, { status: 'ok', version: '0.1.0' })
+        return jsonResponse(200, { status: 'ok', version: '0.1.0', database: 'up' })
       },
     })
 
@@ -26,8 +26,9 @@ describe('createApiClient', () => {
       'GET http://localhost:3000/health',
     ])
     expect(error).toBeUndefined()
-    expect(data).toEqual({ status: 'ok', version: '0.1.0' })
+    expect(data).toEqual({ status: 'ok', version: '0.1.0', database: 'up' })
     expectTypeOf(data).toEqualTypeOf<Health | undefined>()
+    if (data) expectTypeOf(data.status).toEqualTypeOf<'ok' | 'degraded'>()
   })
 
   test('an error response is returned as a typed ErrorBody', async () => {

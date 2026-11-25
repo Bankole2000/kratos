@@ -11,7 +11,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Reports that the api is running, and its version. */
+        /** Reports whether the api and its database are up, and the api's version. */
         get: operations["health"];
         put?: never;
         post?: never;
@@ -25,6 +25,11 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * @description Database health. Written in JSON as `"up"` or `"down"`.
+         * @enum {string}
+         */
+        DatabaseStatus: "up" | "down";
         /** @description The JSON body of every error response: `{ "error": { "code", "message", "request_id" } }`. */
         ErrorBody: {
             error: components["schemas"]["ErrorDetails"];
@@ -49,17 +54,21 @@ export interface components {
         };
         /** @description The body of `GET /health`. */
         Health: {
-            /**
-             * @description Always `ok` while the api is running.
-             * @example ok
-             */
-            status: string;
+            /** @description Whether the database answered. */
+            database: components["schemas"]["DatabaseStatus"];
+            /** @description `ok` when everything is up, `degraded` when the database is down. */
+            status: components["schemas"]["HealthStatus"];
             /**
              * @description The api crate's version from Cargo.toml.
              * @example 0.1.0
              */
             version: string;
         };
+        /**
+         * @description Overall health. Written in JSON as `"ok"` or `"degraded"`.
+         * @enum {string}
+         */
+        HealthStatus: "ok" | "degraded";
     };
     responses: never;
     parameters: never;
@@ -78,7 +87,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The api is running. */
+            /** @description The api is running. `status` is `degraded` when the database is down. */
             200: {
                 headers: {
                     [name: string]: unknown;

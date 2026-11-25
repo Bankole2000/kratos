@@ -1,11 +1,23 @@
 // Compile-time checks that GET /health is typed as the spec says. Run by `vitest --typecheck`
 // and by `tsc --noEmit`; a mismatch with openapi/openapi.json fails both.
 import { describe, expectTypeOf, test } from 'vitest'
-import { createApiClient, type ErrorBody, type Health } from './index.ts'
+import {
+  createApiClient,
+  type DatabaseStatus,
+  type ErrorBody,
+  type Health,
+  type HealthStatus,
+} from './index.ts'
 
 describe('GET /health types', () => {
   test('Health matches the spec schema', () => {
-    expectTypeOf<Health>().toEqualTypeOf<{ status: string; version: string }>()
+    expectTypeOf<HealthStatus>().toEqualTypeOf<'ok' | 'degraded'>()
+    expectTypeOf<DatabaseStatus>().toEqualTypeOf<'up' | 'down'>()
+    expectTypeOf<Health>().toEqualTypeOf<{
+      status: 'ok' | 'degraded'
+      version: string
+      database: 'up' | 'down'
+    }>()
   })
 
   test('ErrorBody matches the spec schema', () => {

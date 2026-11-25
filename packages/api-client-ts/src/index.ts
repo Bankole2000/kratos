@@ -8,6 +8,10 @@ export type { components, operations, paths }
 
 /** The body of `GET /health`. */
 export type Health = components['schemas']['Health']
+/** Overall health in `Health.status`: `ok`, or `degraded` when the database is down. */
+export type HealthStatus = components['schemas']['HealthStatus']
+/** Database health in `Health.database`: `up` or `down`. */
+export type DatabaseStatus = components['schemas']['DatabaseStatus']
 /** The JSON body of every error response. */
 export type ErrorBody = components['schemas']['ErrorBody']
 /** The fields inside `error` in an error response. */
