@@ -3,7 +3,7 @@
 - Reviewer: Unnamed reviewer
 - Date: 2026-11-25
 - Completeness: 9 of 9 required facts
-- Review status: Partially applied
+- Review status: Applied
 
 > For agents: apply these facts to every file under "Where to apply", replacing the matching placeholders. Expand per-app tables, columns, jobs and lines to exactly the apps listed (remove the template's example apps that are not listed). Replace each "Resolution: pending" with what you changed. Set "Review status" to Applied when all entries are resolved, or Partially applied otherwise. Follow AGENTS.md "Applying doc reviews". Facts marked _Not set_ stay as placeholders.
 
@@ -107,4 +107,4 @@ Resolution: Applied: github-actions, cargo (root workspace) and npm (root worksp
 
 A human (or an agent explicitly authorized to change GitHub settings) runs: `bash scripts/setup-github.sh --repo Bankole2000/kratos --apps api,web,app`. Record here who ran it.
 
-Resolution: Not run yet: changing GitHub needs explicit authorization. Pending a human, or an agent told to run it: bash scripts/setup-github.sh --repo Bankole2000/kratos --apps api,web,app
+Resolution: Run 2026-11-25 by Claude Code at the request of @Bankole2000: `bash scripts/setup-github.sh --repo Bankole2000/kratos --apps api,web,app`. Created 38 labels and 7 milestones. Project fields skipped: no GitHub Project exists yet (Project number not set).
