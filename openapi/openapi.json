@@ -15,11 +15,11 @@
         "tags": [
           "health"
         ],
-        "summary": "Reports that the api is running, and its version.",
+        "summary": "Reports whether the api and its database are up, and the api's version.",
         "operationId": "health",
         "responses": {
           "200": {
-            "description": "The api is running.",
+            "description": "The api is running. `status` is `degraded` when the database is down.",
             "content": {
               "application/json": {
                 "schema": {
@@ -44,6 +44,14 @@
   },
   "components": {
     "schemas": {
+      "DatabaseStatus": {
+        "type": "string",
+        "description": "Database health. Written in JSON as `\"up\"` or `\"down\"`.",
+        "enum": [
+          "up",
+          "down"
+        ]
+      },
       "ErrorBody": {
         "type": "object",
         "description": "The JSON body of every error response: `{ \"error\": { \"code\", \"message\", \"request_id\" } }`.",
@@ -87,13 +95,17 @@
         "description": "The body of `GET /health`.",
         "required": [
           "status",
-          "version"
+          "version",
+          "database"
         ],
         "properties": {
+          "database": {
+            "$ref": "#/components/schemas/DatabaseStatus",
+            "description": "Whether the database answered."
+          },
           "status": {
-            "type": "string",
-            "description": "Always `ok` while the api is running.",
-            "example": "ok"
+            "$ref": "#/components/schemas/HealthStatus",
+            "description": "`ok` when everything is up, `degraded` when the database is down."
           },
           "version": {
             "type": "string",
@@ -101,6 +113,14 @@
             "example": "0.1.0"
           }
         }
+      },
+      "HealthStatus": {
+        "type": "string",
+        "description": "Overall health. Written in JSON as `\"ok\"` or `\"degraded\"`.",
+        "enum": [
+          "ok",
+          "degraded"
+        ]
       }
     }
   },
