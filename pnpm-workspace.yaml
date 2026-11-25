@@ -15,3 +15,8 @@ catalog:
   vitest: 5.1.1
   '@vue/test-utils': 2.6.0
   happy-dom: 21.0.4
+
+# Dependency install scripts that pnpm may run. esbuild (pulled in by Nuxt) only uses its
+# postinstall to check its platform binary, which pnpm already installs; skip it.
+allowBuilds:
+  esbuild: false
