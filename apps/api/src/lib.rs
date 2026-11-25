@@ -5,6 +5,7 @@ pub mod config;
 pub mod error;
 pub mod health;
 pub mod logging;
+pub mod openapi;
 pub mod request_id;
 
 // Shared domain types (packages/types), re-exported so handlers and tests use `api::types::...`.
