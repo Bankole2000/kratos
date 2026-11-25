@@ -13,6 +13,7 @@ All notable changes to this app are recorded here. Format based on [Keep a Chang
 - First migration (`apps/api/migrations`): the `datasets` table (`name`, `version`, `updated_at`). Migrations are run with `sqlx migrate run`, not at api startup.
 - OpenAPI 3.1 spec generated with utoipa (`cargo run -p api -- openapi`) and committed as `openapi/openapi.json`, with `/health` and the `ErrorBody` schema; `cargo test -p api` fails when it is out of date.
 ### Changed
+- Default port is now 18080 (was 8080, which other local tools often take). Set `API_PORT` to change it.
 - `GET /health` also reports the database: `{ "status": "ok" | "degraded", "version": "…", "database": "up" | "down" }`. It always answers 200; `status` is `degraded` when the database is down.
 ### Fixed
 ### Removed

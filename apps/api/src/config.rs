@@ -20,7 +20,7 @@ impl Config {
     /// are an error so the server refuses to start instead of guessing.
     pub fn from_env() -> Result<Config, String> {
         let host = env_or("API_HOST", "127.0.0.1");
-        let port = env_or("API_PORT", "8080");
+        let port = env_or("API_PORT", "18080");
         let log_filter = env_or("RUST_LOG", "info");
         let database_url = env_or("DATABASE_URL", "");
         if database_url.is_empty() {
