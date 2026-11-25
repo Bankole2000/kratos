@@ -12,7 +12,7 @@ Test layers per app:
 | web | — (screens are tested in packages/ui) | Nuxt pages render with a mocked API client | Critical journeys in a browser against a running api and test database | Vitest, Playwright |
 | app | Rust commands in `src-tauri` | Shared screens are tested in packages/ui | Smoke test of the built desktop app on Windows and Linux; manual check on macOS, Android and iOS before each release | `cargo test`, WebdriverIO with `tauri-driver` (TBD) |
 | packages/ui | Components and composables | Screens with a mocked API client, at 360 px and desktop widths | — | Vitest, Vue Test Utils |
-| packages/api-client-ts | — | Generated client compiles against the committed spec | — | `tsc` |
+| packages/api-client-ts | Client calls `/health` against a mocked `fetch` | Generated client compiles against the committed spec; response types match it; `check:generated` fails on a stale client | — | `tsc`, Vitest |
 | sdk-ts, sdk-dart, sdk-rust | Queue, batching, backoff, sampling, offline cap | The shared conformance suite against a mock server and against a real api | — | Vitest, `dart test`, `cargo test` |
 | infra | TBD (ADR-002) | TBD | — | TBD |
 

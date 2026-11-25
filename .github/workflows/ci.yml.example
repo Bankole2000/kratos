@@ -136,7 +136,7 @@ jobs:
       #     node-version-file: .nvmrc
       #     cache: pnpm
       # - run: pnpm install --frozen-lockfile
-      # - run: pnpm --filter api-client-ts generate && git diff --exit-code packages/api-client-ts
+      # - run: pnpm --filter api-client-ts check:generated
       # - run: pnpm --filter ui --filter web lint
       # - run: pnpm --filter ui --filter web typecheck
       # - run: pnpm --filter ui --filter web test
