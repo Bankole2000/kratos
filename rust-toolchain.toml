@@ -1,0 +1,7 @@
+# Pinned Rust toolchain; rustup installs it automatically on first use.
+# Update deliberately in its own PR, together with workspace.package.rust-version.
+# Android and iOS targets are added in TASK-009 (apps/app).
+[toolchain]
+channel = "1.100.0"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

@@ -83,19 +83,19 @@ Documents drafted or changed by an agent are reviewed by a human with `tools/doc
 To avoid holding up building, the owner may approve a document as drafted and review its sections when the milestone that needs them is planned; the Approval section records which was done.
 
 ## Local development
-- Prerequisites (exact versions are pinned in M0, TASK-001): Rust stable via rustup, with `sqlx-cli`; Node.js LTS with pnpm (via Corepack); Docker for local Postgres; the [Tauri 2 prerequisites](https://v2.tauri.app/start/prerequisites/) for your OS; Android Studio with the NDK for Android builds; Xcode on macOS for iOS builds; the Dart SDK for `sdks/dart`.
+- Prerequisites: [rustup](https://rustup.rs/) (the toolchain, Rust 1.100.0 with rustfmt and clippy, is pinned in `rust-toolchain.toml` and installed automatically), plus `sqlx-cli` (`cargo install sqlx-cli --no-default-features --features rustls,postgres`); Node.js 26 (`.nvmrc`) with pnpm 12.23.0 (`packageManager` in `package.json`; install with `npm install -g pnpm@12.23.0`, since Node 25 and later no longer bundle Corepack); Docker for local Postgres; the [Tauri 2 prerequisites](https://v2.tauri.app/start/prerequisites/) for your OS; Android Studio with the NDK for Android builds; Xcode on macOS for iOS builds; the Dart SDK for `sdks/dart`.
 - Configure: for each app, copy `apps/<app>/.env.example` to `apps/<app>/.env` and supply local values. The root `.env.example` covers repository-wide tooling only.
 
 ## Commands
 This table is the single source of truth for project commands. Other documents and agents refer here. Use the "All apps" row to check everything before a PR; use an app's row when working inside that app. There is one row per app, package with its own checks, and `infra`; add or delete rows to match. Write N/A where a command doesn't apply.
 
-The commands below are the intended ones; none work until M0 creates the workspaces (TASK-010 verifies and corrects this table). Start Postgres first with `docker compose up -d`.
+The commands below are the intended ones. The root scripts exist since TASK-001, but the Cargo parts only run once the workspace has its first crate (TASK-002); TASK-010 verifies and corrects this table. Start Postgres first with `docker compose up -d`.
 
-Install everything (repo root): `pnpm install` (Cargo fetches Rust dependencies on first build)
+Install everything (repo root): `pnpm install` (Cargo fetches Rust dependencies on first build). Format everything: `pnpm format`.
 
 | App | Run locally | Test | E2E | Lint | Typecheck | Build | Migrations |
 |---|---|---|---|---|---|---|---|
-| All apps (repo root) | — | `cargo test --workspace && pnpm -r test` | `pnpm --filter web e2e` | `cargo fmt --check && cargo clippy --workspace -- -D warnings && pnpm -r lint` | `pnpm -r typecheck` | `cargo build --workspace && pnpm -r build` | — |
+| All apps (repo root) | — | `pnpm test` | `pnpm e2e` | `pnpm lint` (rustfmt, clippy, each package's lint, Prettier) | `pnpm typecheck` | `pnpm build` | — |
 | api | `cargo run -p api` | `cargo test -p api` | N/A | `cargo clippy -p api -- -D warnings` | N/A (compiler) | `cargo build -p api --release` | `sqlx migrate run --source apps/api/migrations` |
 | web | `pnpm --filter web dev` | `pnpm --filter web test` | `pnpm --filter web e2e` | `pnpm --filter web lint` | `pnpm --filter web typecheck` | `pnpm --filter web build` | N/A |
 | app | `pnpm --filter app tauri dev` (Android: `tauri android dev`; iOS: `tauri ios dev`) | `pnpm --filter app test` | TBD (ADR in M0) | `pnpm --filter app lint` | `pnpm --filter app typecheck` | `pnpm --filter app tauri build` | N/A |

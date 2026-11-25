@@ -1,0 +1,15 @@
+# Generated or owned by other tools
+pnpm-lock.yaml
+openapi/openapi.json
+packages/api-client-ts/src/generated/
+.sqlx/
+target/
+.nuxt/
+.output/
+dist/
+coverage/
+apps/app/src-tauri/gen/
+
+# Markdown is written by hand (and reviewed with tools/doc-reviewer.html)
+*.md
+tools/
