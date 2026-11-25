@@ -91,7 +91,7 @@ To avoid holding up building, the owner may approve a document as drafted and re
 ## Commands
 This table is the single source of truth for project commands. Other documents and agents refer here. Use the "All apps" row to check everything before a PR; use an app's row when working inside that app. There is one row per app, package with its own checks, and `infra`; add or delete rows to match. Write N/A where a command doesn't apply.
 
-CI (`.github/workflows/ci.yml`, since TASK-010) runs these commands on every PR for the parts it changes, so the rows for the root, api, types and api-client-ts are checked on every run. Rows marked "(from TASK-00x)" are for apps and packages that task creates; they work once it merges, and CI switches their checks on by itself at that point. Start Postgres first with `docker compose up -d` and run the api migrations (see Local development); `cargo test -p api` needs it running and `DATABASE_URL` in the root `.env`.
+CI (`.github/workflows/ci.yml`, since TASK-010) runs these commands on every PR for the parts it changes, so every row is checked by CI. Start Postgres first with `docker compose up -d` and run the api migrations (see Local development); `cargo test -p api` needs it running and `DATABASE_URL` in the root `.env`.
 
 Install everything (repo root): `pnpm install` (Cargo fetches Rust dependencies on first build). Format everything: `pnpm format`.
 
@@ -99,7 +99,7 @@ Install everything (repo root): `pnpm install` (Cargo fetches Rust dependencies 
 |---|---|---|---|---|---|---|---|
 | All apps (repo root) | — | `pnpm test` (`cargo test --workspace`, then each package's `test`) | `pnpm e2e` (none yet: web E2E arrives in M1) | `pnpm lint` (rustfmt, clippy for the whole workspace, each package's lint, Prettier) | `pnpm typecheck` | `pnpm build` | — |
 | api | `cargo run -p api` | `cargo test -p api` (includes the OpenAPI spec check) | N/A | `cargo fmt --all --check`, `cargo clippy -p api --all-targets -- -D warnings` | N/A (compiler) | `cargo build -p api --release` | `sqlx migrate run --source apps/api/migrations` |
-| web (from TASK-008) | `pnpm --filter web dev` (port 13000) | `pnpm --filter web test` | TBD (M1, Playwright) | N/A (Prettier from the root) | `pnpm --filter web typecheck` | `pnpm --filter web build` | N/A |
+| web | `pnpm --filter web dev` (http://localhost:13000; api URL from `NUXT_PUBLIC_API_BASE_URL`) | `pnpm --filter web test` | TBD (Playwright, with the first M1 journey) | N/A (Prettier from the root) | `pnpm --filter web typecheck` | `pnpm --filter web build` (run with `pnpm --filter web preview`) | N/A |
 | app | `pnpm --filter app tauri dev` (Android: `pnpm --filter app tauri android dev`, needs the variables in apps/app/AGENTS.md; iOS: `tauri ios dev`, macOS only) | `pnpm --filter app test` (and `cargo test -p app`) | TBD (ADR in M0) | `cargo clippy -p app --all-targets -- -D warnings` (front end: Prettier from the root) | `pnpm --filter app typecheck` | `pnpm --filter app tauri build` (unsigned desktop build; Vite only: `pnpm --filter app build`; Android: `pnpm --filter app tauri android build --debug --apk`) | N/A |
 | ui | N/A | `pnpm --filter ui test` (Vitest, happy-dom) | N/A | N/A (Prettier from the root) | `pnpm --filter ui typecheck` (vue-tsc) | N/A (consumed as source by web and app) | N/A |
 | types | N/A | `cargo test -p types` | N/A | `cargo clippy -p types --all-targets -- -D warnings` | N/A (compiler) | N/A | N/A |
