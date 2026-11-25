@@ -28,3 +28,9 @@ Podfile.lock linguist-generated=true
 *.aab binary
 *.apk binary
 *.ipa binary
+
+# Platform Core: generated files (still diffed: the OpenAPI spec is the contract)
+Cargo.lock linguist-generated=true -diff
+pubspec.lock linguist-generated=true -diff
+openapi/openapi.json linguist-generated=true
+.sqlx/** linguist-generated=true

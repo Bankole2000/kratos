@@ -70,6 +70,7 @@ LABELS=(
   "type:performance|1d76db|Performance work"
   # Per-app labels are added from APP_LABELS below.
   "app:packages|5319e7|Shared code (packages/)"
+  "app:sdks|5319e7|Published SDKs (sdks/)"
   "app:infra|5319e7|Infrastructure-as-code (infra/)"
   "app:repo|5319e7|Repository-wide: CI, tooling, docs"
   "area:frontend|0e8a16|Frontend"
@@ -105,10 +106,12 @@ done
 # --- Milestones (must match docs/ROADMAP.md exactly) ---
 MILESTONES=(
   "M0 - Foundation"
-  "M1 - Core MVP"
-  "M2 - MVP Hardening"
-  "M3 - MVP Launch"
-  "M4 - Post-launch (stretch)"
+  "M1 - Core registry"
+  "M2 - Reference data"
+  "M3 - Metrics"
+  "M4 - Costs and Dart SDK"
+  "M5 - Hardening and launch"
+  "v2 - Post-launch"
 )
 
 echo "Milestones:"
