@@ -1,6 +1,6 @@
 # Product Requirements Document
 
-Status: Draft | Owner: @Bankole2000 | Version: 0.2 | Last updated: 2026-11-25
+Status: Approved | Owner: @Bankole2000 | Version: 1.0 | Last updated: 2026-11-25
 References: platform-core.md (project overview, guiding principles and SDK specification)
 
 ## Vision and problem
@@ -121,7 +121,7 @@ Later phases from platform-core.md section 5. Their IDs are reserved there.
 - One developer, learning Rust while building. Milestones start with CRUD and reference data and leave ingestion, batching and rate limiting until later (principle 23).
 - Signed desktop and mobile builds need an Apple Developer account, a Google Play account and a Windows code-signing certificate, which can take days to weeks to obtain.
 - Package names on npm, pub.dev, crates.io and PyPI may be taken (D6).
-- Nuxt 3 reached end of maintenance in July 2026; staying on it means no security fixes (OD-005).
+- Nuxt 3 reached end of maintenance in July 2026, so apps/web uses Nuxt 4 (OD-005).
 - Every consumer app depends on Platform Core; if it is down, SDKs must degrade quietly (NFR-006) and apps must keep working.
 
 ## Open decisions
@@ -130,8 +130,8 @@ Decisions D1 to D8 are tracked in platform-core.md section 8 (D2 is decided: SQL
 - OD-002: Maximum events per batch (N) and maximum request size. Owner: @Bankole2000. Needed by: M3.
 - OD-003: Source for phone codes (ITU-T E.164 assignments or a maintained dataset such as libphonenumber metadata). Owner: @Bankole2000. Needed by: M2.
 - OD-004: Do agent keys get their own prefix (for example, `pc_ak_`) so they are recognizable in logs? Owner: @Bankole2000. Needed by: M1, together with D8.
-- OD-005: Nuxt 3 or Nuxt 4 for `apps/web`, given Nuxt 3's end of maintenance. Owner: @Bankole2000. Needed by: M0.
+- OD-005: Nuxt version for `apps/web`. **Decided 2026-11-25: Nuxt 4**, since Nuxt 3 no longer gets security fixes. This replaces "Nuxt 3" in platform-core.md section 2.
 - OD-006: License. **Decided (2026-11-25 project setup review): MIT** for the whole repository, SDKs included. See LICENSE.
 
 ## Approval
-TBD: human approver, date and approved revision.
+Approved by @Bankole2000 on 2026-11-25, revision 1.0, to start building. Approved as drafted without an item-by-item review; sections are revisited when the milestone that needs them is planned, and open TBDs stay open decisions.

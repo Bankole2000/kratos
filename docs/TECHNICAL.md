@@ -1,6 +1,6 @@
 # Technical Specification
 
-Status: Draft | Owner: @Bankole2000 | Version: 0.1 | Last updated: 2026-11-25
+Status: Approved | Owner: @Bankole2000 | Version: 1.0 | Last updated: 2026-11-25
 References: PRD.md, DESIGN.md, platform-core.md (guiding principles, SDK specification)
 
 ## Architecture overview
@@ -26,7 +26,7 @@ One row per deployable app in `apps/`, per shared package in `packages/`, per pu
 | Component | Path | Kind | Stack and version | Deploys to | Owner | Requirements |
 |---|---|---|---|---|---|---|
 | api | apps/api | Server/API | Rust (stable), Axum, Tokio, SQLx, utoipa; Postgres | TBD (D1) | @Bankole2000 | FR-001 to FR-030, FR-034 |
-| web | apps/web | Web client | Nuxt (SSR; version in OD-005), Vue 3, Vuetify 3 | TBD (D1; needs a Node runtime for SSR) | @Bankole2000 | FR-001 to FR-030, FR-035 |
+| web | apps/web | Web client | Nuxt 4 (SSR; OD-005), Vue 3, Vuetify 3 | TBD (D1; needs a Node runtime for SSR) | @Bankole2000 | FR-001 to FR-030, FR-035 |
 | app | apps/app | Desktop and mobile client | Vue 3 + Vite inside Tauri 2; Windows, macOS, Linux, Android, iOS (minimum versions TBD) | GitHub Releases or stores (TBD); App Store, Google Play | @Bankole2000 | FR-001 to FR-030, FR-035 |
 | mcp (v2) | apps/mcp | Server (stdio) | Rust, `rmcp`, Rust SDK | Runs locally | @Bankole2000 | F20 |
 | ui | packages/ui | Shared package | Vue 3 + Vuetify 3 components, composables, screens | Not deployed | @Bankole2000 | FR-035 |
@@ -180,4 +180,4 @@ Decisions marked Accepted were made in platform-core.md and need only confirmati
 
 ## Open decisions and approval
 Open: D1, D3 to D8 (platform-core.md section 8), OD-001 to OD-006 (PRD.md), ADR-002, ADR-008, ADR-010, and the installed-client support window.
-Approval: TBD: human approver, date and approved revision.
+Approval: Approved by @Bankole2000 on 2026-11-25, revision 1.0, to start building. Approved as drafted without an item-by-item review; sections are revisited when the milestone that needs them is planned, and open TBDs stay open decisions.

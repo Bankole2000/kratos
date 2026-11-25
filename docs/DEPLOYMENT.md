@@ -1,6 +1,6 @@
 # Deployment and Operations
 
-Status: Draft | Owner: @Bankole2000 | Version: 0.1 | Last updated: 2026-11-25
+Status: Approved | Owner: @Bankole2000 | Version: 1.0 | Last updated: 2026-11-25
 References: TECHNICAL.md, TESTING.md
 
 Most of this document waits on D1 (deployment target). It is drafted far enough to plan M0 to M4; complete it before planning M5.
@@ -99,4 +99,6 @@ Build and validation commands are in the README [Commands](../README.md#commands
 Contact: @Bankole2000. Severity: TBD. Steps: contain (revoke an exposed key, roll back a release), recover, then write a short note in the repository with cause and follow-up. Because every consumer app depends on Platform Core, an outage note lists the affected apps.
 
 ## Approval
+Approved by @Bankole2000 on 2026-11-25, revision 1.0, to start building. Approved as drafted without an item-by-item review; sections are revisited when the milestone that needs them is planned, and open TBDs stay open decisions.
+
 Release owner for every app and SDK: @Bankole2000. No autonomous production deployment, infrastructure apply, store submission, desktop publish or package publish.

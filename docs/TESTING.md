@@ -1,6 +1,6 @@
 # Testing and Acceptance
 
-Status: Draft | Owner: @Bankole2000 | Version: 0.1 | Last updated: 2026-11-25
+Status: Approved | Owner: @Bankole2000 | Version: 1.0 | Last updated: 2026-11-25
 References: PRD.md, TECHNICAL.md
 
 ## Strategy
@@ -88,3 +88,6 @@ See the README [Commands](../README.md#commands) table. Unit, integration and co
 - **app:** critical journeys pass on Windows, macOS and Linux and on one Android and one iOS device at the minimum supported versions (TBD); builds are signed (and notarized on macOS).
 - **SDKs:** conformance suite passes; README examples run as written.
 - Known limitations listed in the release notes. Human sign-off: @Bankole2000.
+
+## Approval
+Approved by @Bankole2000 on 2026-11-25, revision 1.0, to start building. Approved as drafted without an item-by-item review; sections are revisited when the milestone that needs them is planned, and open TBDs stay open decisions.

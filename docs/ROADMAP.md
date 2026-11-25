@@ -1,6 +1,6 @@
 # Development Roadmap
 
-Status: Draft | Owner: @Bankole2000 | Version: 0.1 | Last updated: 2026-11-25
+Status: Approved | Owner: @Bankole2000 | Version: 1.0 | Last updated: 2026-11-25
 References: PRD.md, DESIGN.md, TECHNICAL.md, TESTING.md, platform-core.md section 7
 
 ## Milestones
@@ -28,7 +28,7 @@ Only M0 is planned in detail. Later milestones are broken down once the previous
 | TASK-005 | `packages/types` Rust crate with the first shared types, used by api | packages | — | TC-000 | M0 | TASK-001 | Medium | TBD |
 | TASK-006 | `packages/api-client-ts` generated from the spec (ADR-010 decided in this task) | packages | — | TC-000 | M0 | TASK-004 | High | TBD |
 | TASK-007 | `packages/ui` with Vuetify theme, layout shell (side rail and bottom bar) and a status screen that calls `/health` through the client | packages | FR-035 | TC-000 | M0 | TASK-006 | High | TBD |
-| TASK-008 | `apps/web` Nuxt shell rendering the shared status screen (Nuxt version per OD-005) | web | FR-035 | TC-000 | M0 | TASK-007 | High | TBD |
+| TASK-008 | `apps/web` Nuxt 4 shell rendering the shared status screen | web | FR-035 | TC-000 | M0 | TASK-007 | High | TBD |
 | TASK-009 | `apps/app` Tauri 2 + Vue + Vite shell rendering the shared status screen on desktop; Android and iOS projects initialized and building in debug | app | FR-035 | TC-000 | M0 | TASK-007 | High | TBD |
 | TASK-010 | CI: rename and adapt `ci.yml.example` and `dependabot.yml.example` for api, web, app, packages and the generated-file checks; fill in the README Commands table | repo | — | TC-000 | M0 | TASK-003, TASK-004, TASK-008, TASK-009 | High | TBD |
 
@@ -44,4 +44,4 @@ Only M0 is planned in detail. Later milestones are broken down once the previous
 - Reconcile scope changes with the approved PRD before generating new tasks.
 
 ## Approval
-TBD: human approver, revision and date.
+Approved by @Bankole2000 on 2026-11-25, revision 1.0, to start building. Approved as drafted without an item-by-item review; sections are revisited when the milestone that needs them is planned, and open TBDs stay open decisions.

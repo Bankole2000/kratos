@@ -80,6 +80,8 @@ Documents drafted or changed by an agent are reviewed by a human with `tools/doc
 5. Ask the agent to apply open reviews. It edits the documents and records a resolution for each entry (see AGENTS.md, "Applying doc reviews").
 6. Repeat until the verdict is Approved, then set the document's Status to Approved.
 
+To avoid holding up building, the owner may approve a document as drafted and review its sections when the milestone that needs them is planned; the Approval section records which was done.
+
 ## Local development
 - Prerequisites (exact versions are pinned in M0, TASK-001): Rust stable via rustup, with `sqlx-cli`; Node.js LTS with pnpm (via Corepack); Docker for local Postgres; the [Tauri 2 prerequisites](https://v2.tauri.app/start/prerequisites/) for your OS; Android Studio with the NDK for Android builds; Xcode on macOS for iOS builds; the Dart SDK for `sdks/dart`.
 - Configure: for each app, copy `apps/<app>/.env.example` to `apps/<app>/.env` and supply local values. The root `.env.example` covers repository-wide tooling only.

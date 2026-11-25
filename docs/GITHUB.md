@@ -1,6 +1,6 @@
 # GitHub Management Specification
 
-Status: Draft | Owner: @Bankole2000 | Version: 0.1 | Last updated: 2026-11-25
+Status: Approved | Owner: @Bankole2000 | Version: 1.0 | Last updated: 2026-11-25
 
 ## Configuration
 - Repository: Bankole2000/kratos (public)
@@ -91,3 +91,6 @@ Use the template, link the issue, report actual validation, identify risks. Use 
 
 ## Setup verification
 Confirm actual field names/options and IDs, milestone names, labels, permissions, branch rules and automation behavior before agents write. Project fields may require separate API permissions (`gh auth refresh -s project`). This document is a specification, not live GitHub configuration.
+
+## Approval
+Approved by @Bankole2000 on 2026-11-25, revision 1.0, to start building. Approved as drafted without an item-by-item review; sections are revisited when the milestone that needs them is planned, and open TBDs stay open decisions.

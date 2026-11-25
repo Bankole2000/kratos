@@ -1,6 +1,6 @@
 # Product Design
 
-Status: Draft | Owner: @Bankole2000 | Version: 0.1 | Last updated: 2026-11-25
+Status: Approved | Owner: @Bankole2000 | Version: 1.0 | Last updated: 2026-11-25
 References: PRD.md
 
 ## Platforms and navigation
@@ -64,4 +64,4 @@ None yet. Wireframes TBD.
 - D4: which web pages are public (affects SSR and SEO work in `apps/web`).
 - Brand colours, typography and logo.
 - Minimum desktop and mobile OS versions.
-Approval: TBD: human approver, date and approved revision.
+Approval: Approved by @Bankole2000 on 2026-11-25, revision 1.0, to start building. Approved as drafted without an item-by-item review; sections are revisited when the milestone that needs them is planned, and open TBDs stay open decisions.
