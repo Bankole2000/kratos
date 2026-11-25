@@ -180,8 +180,14 @@ mark.tbd{background:var(--d2-bg);color:var(--d2);border-radius:4px;padding:0 3px
 .req{color:var(--d1)}
 .field-error{font-size:11px;color:var(--d1);margin-top:3px;min-height:0}
 .field-source{font-size:11px;color:var(--d0);margin-top:3px}
-.list-row{display:grid;grid-template-columns:1fr 1fr 1fr 28px;gap:8px;align-items:start;margin-bottom:8px}
+.list-row{display:grid;grid-template-columns:1fr 1.7fr 1fr 28px;gap:8px;align-items:start;margin-bottom:8px}
 .list-row.two{grid-template-columns:1fr 1fr 28px}
+.kind-chips{display:flex;flex-wrap:wrap;gap:4px}
+.kind-chip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--border);border-radius:999px;padding:3px 9px;font-size:11px;color:var(--fg-muted);cursor:pointer;user-select:none}
+.kind-chip input{position:absolute;opacity:0;width:0;height:0}
+.kind-chip.on{border-color:var(--accent);color:var(--accent);background:var(--accent-bg)}
+.kind-chip:focus-within{outline:2px solid var(--accent);outline-offset:1px}
+.kind-chips.invalid{outline:1px solid var(--d1);outline-offset:3px;border-radius:6px}
 .list-head{font-size:11px;color:var(--fg-muted);font-weight:500}
 .list-empty{font-size:12px;color:var(--fg-faint);margin-bottom:8px}
 
@@ -652,6 +658,29 @@ function parseGitHead(text) {
   const m = /^ref:\s*refs\/heads\/(\S+)/.exec(String(text).trim());
   return m ? m[1] : '';
 }
+// Branch names under a ref prefix (e.g. "refs/heads/") listed in .git/packed-refs.
+function packedBranches(text, prefix) {
+  const out = [];
+  for (const line of String(text || '').split('\n')) {
+    const m = /^[0-9a-f]{7,}\s+(\S+)$/.exec(line.trim());
+    if (m && m[1].startsWith(prefix)) out.push(m[1].slice(prefix.length));
+  }
+  return out;
+}
+// The repository's default branch from what .git holds. .git/HEAD is only the
+// branch that happens to be checked out, so it is the last resort.
+// g: { originHead, localBranches, remoteBranches, head } (file text and name lists).
+function detectDefaultBranch(g) {
+  const m = /^ref:\s*refs\/remotes\/[^/]+\/(\S+)/.exec(String(g.originHead || '').trim());
+  if (m) return { branch: m[1], source: 'Detected from origin/HEAD' };
+  const has = b => (g.remoteBranches || []).includes(b) || (g.localBranches || []).includes(b);
+  for (const b of ['main', 'master']) if (has(b)) return { branch: b, source: 'Detected: the repository has a ' + b + ' branch' };
+  const head = parseGitHead(g.head);
+  return head ? { branch: head, source: 'The checked-out branch (.git/HEAD); confirm it is the default branch' } : { branch: '', source: '' };
+}
+// An app can be more than one kind (e.g. a Tauri app is a desktop and a mobile client).
+// Older saved setups stored a single "kind".
+function appKinds(a) { return Array.isArray(a.kinds) ? a.kinds : a.kind ? [a.kind] : []; }
 function normUser(v) { v = String(v || '').trim(); return v && !v.startsWith('@') ? '@' + v : v; }
 
 const VALIDATORS = {
@@ -677,7 +706,7 @@ function listErrors(setup) {
     if (e) errs[prefix + '.' + i + '.name'] = e;
     else if (names[n]) errs[prefix + '.' + i + '.name'] = 'Name already used';
     names[n] = true;
-    if (prefix === 'apps' && !r.kind) errs[prefix + '.' + i + '.kind'] = 'Required';
+    if (prefix === 'apps' && !appKinds(r).length) errs[prefix + '.' + i + '.kind'] = 'Required';
     if (r.owner && r.owner.trim() && VALIDATORS.ghUser(r.owner)) errs[prefix + '.' + i + '.owner'] = VALIDATORS.ghUser(r.owner);
   });
   check(setup.apps || [], 'apps');
@@ -773,6 +802,31 @@ function acceptRemaining(items, decisions, section) {
     n++;
   }
   return n;
+}
+
+// Review text without the parts that change on every export or when an agent
+// applies it (date, reviewer, review status, resolutions), for spotting re-exports
+// that record nothing new.
+function normalizeReview(md) {
+  return String(md)
+    .replace(/^- (Date|Reviewer|Review status): .*$/gm, '')
+    .replace(/^Resolution: .*$/gm, 'Resolution:')
+    .replace(/\s+/g, ' ').trim();
+}
+function sameReview(a, b) { return normalizeReview(a) === normalizeReview(b); }
+
+// The newest existing review file for a document, from the file names in
+// docs/reviews (YYYY-MM-DD-<name>.md, then -2, -3 … on the same day).
+function latestReviewFile(names, path) {
+  const base = path.split('/').pop().replace(/\.(md|markdown|txt)$/i, '').replace(/[.*+?^$()|[\]\\]/g, '\\$&');
+  const re = new RegExp('^(\\d{4}-\\d{2}-\\d{2})-' + base + '(?:-(\\d+))?\\.md$');
+  let best = null;
+  for (const n of names) {
+    const m = re.exec(n); if (!m) continue;
+    const k = m[1] + '|' + String(+(m[2] || 1)).padStart(4, '0');
+    if (!best || k > best.k) best = { name: n, k };
+  }
+  return best ? best.name : '';
 }
 
 function hasReviewContent(state) {
@@ -878,8 +932,8 @@ function buildSetupMarkdown(setup, opts) {
   const repo = parseRepo(v('github.repo'));
   const owner = a => normUser(a.owner) || normUser(v('people.codeOwner')) || '_default code owner_';
   const appNames = apps.map(a => a.name.trim());
-  const hasMobile = apps.some(a => a.kind === 'Mobile client');
-  const hasDesktop = apps.some(a => a.kind === 'Desktop client');
+  const hasMobile = apps.some(a => appKinds(a).includes('Mobile client'));
+  const hasDesktop = apps.some(a => appKinds(a).includes('Desktop client'));
   const removeSections = [!hasMobile && '"Mobile releases"', !hasDesktop && '"Desktop releases"'].filter(Boolean);
   const st = setupStatus(setup);
 
@@ -904,7 +958,7 @@ function buildSetupMarkdown(setup, opts) {
   if (!apps.length) L.push('None listed yet.', '');
   else {
     L.push('| App | Path | Kind | Code owner |', '|---|---|---|---|');
-    for (const a of apps) L.push('| ' + cell(a.name.trim()) + ' | apps/' + cell(a.name.trim()) + ' | ' + cell(a.kind) + ' | ' + cell(owner(a)) + ' |');
+    for (const a of apps) L.push('| ' + cell(a.name.trim()) + ' | apps/' + cell(a.name.trim()) + ' | ' + cell(appKinds(a).join(', ')) + ' | ' + cell(owner(a)) + ' |');
     L.push('');
   }
 
@@ -999,7 +1053,7 @@ function loadSetup() {
   setup = newSetup();
   if (saved) {
     Object.assign(setup.values, saved.values || {});
-    setup.apps = Array.isArray(saved.apps) ? saved.apps : [];
+    setup.apps = (Array.isArray(saved.apps) ? saved.apps : []).map(a => ({ name: a.name || '', kinds: appKinds(a), owner: a.owner || '' }));
     setup.packages = Array.isArray(saved.packages) ? saved.packages : [];
     setup.sources = saved.sources || {};
   }
@@ -1007,11 +1061,16 @@ function loadSetup() {
     if (value && !setup.values[key]) { setup.values[key] = value; setup.sources[key] = source; }
   };
   suggest('github.repo', project.detected.repo, 'Detected from .git/config');
-  suggest('github.defaultBranch', project.detected.branch, 'Detected from .git/HEAD');
+  // Earlier versions filled the default branch from .git/HEAD (the checked-out
+  // branch). Replace such a value when better detection disagrees with it.
+  if (setup.sources['github.defaultBranch'] === 'Detected from .git/HEAD' && project.detected.branch && setup.values['github.defaultBranch'] !== project.detected.branch) {
+    setup.values['github.defaultBranch'] = '';
+  }
+  suggest('github.defaultBranch', project.detected.branch, project.detected.branchSource || 'Detected from .git');
   const readme = docs.find(d => /(^|\/)readme\.md$/i.test(d.path));
   if (readme && readme.h1 && !findPlaceholders(readme.h1).length) suggest('project.name', readme.h1, 'Taken from README.md');
   if (!setup.apps.length && project.detected.apps && project.detected.apps.length) {
-    setup.apps = project.detected.apps.map(name => ({ name, kind: '', owner: '' }));
+    setup.apps = project.detected.apps.map(name => ({ name, kinds: [], owner: '' }));
     setup.sources.apps = 'Detected from apps/';
   }
 }
@@ -1049,6 +1108,15 @@ function isIncludedPath(rel) {
 async function readText(dir, name) {
   try { return await (await (await dir.getFileHandle(name)).getFile()).text(); } catch (e) { return ''; }
 }
+async function subDir(dir, parts) {
+  try { for (const p of parts) dir = await dir.getDirectoryHandle(p); return dir; } catch (e) { return null; }
+}
+// Names of the files (not folders) directly inside a sub-folder; [] if it doesn't exist.
+async function fileNames(dir, parts) {
+  const d = await subDir(dir, parts), out = [];
+  if (d) for await (const [n, h] of d.entries()) if (h.kind === 'file') out.push(n);
+  return out;
+}
 
 async function openWithDirectoryPicker() {
   let root;
@@ -1070,7 +1138,14 @@ async function openWithDirectoryPicker() {
   try {
     const git = await root.getDirectoryHandle('.git');
     project.detected.repo = parseGitConfig(await readText(git, 'config'));
-    project.detected.branch = parseGitHead(await readText(git, 'HEAD'));
+    const packed = await readText(git, 'packed-refs');
+    const det = detectDefaultBranch({
+      originHead: await readText(await subDir(git, ['refs', 'remotes', 'origin']), 'HEAD'),
+      localBranches: [...await fileNames(git, ['refs', 'heads']), ...packedBranches(packed, 'refs/heads/')],
+      remoteBranches: [...await fileNames(git, ['refs', 'remotes', 'origin']), ...packedBranches(packed, 'refs/remotes/origin/')],
+      head: await readText(git, 'HEAD')
+    });
+    project.detected.branch = det.branch; project.detected.branchSource = det.source;
   } catch (e) {}
   try {
     const appsDir = await root.getDirectoryHandle('apps');
@@ -1098,7 +1173,18 @@ $('folder-input').addEventListener('change', async e => {
   if (!entries.length) entries = files.map(f => ({ file: f, path: rel(f) })).filter(x => /^[^/]+\.md$/i.test(x.path));
   const gitConfig = files.find(f => rel(f) === '.git/config'), gitHead = files.find(f => rel(f) === '.git/HEAD');
   if (gitConfig) project.detected.repo = parseGitConfig(await gitConfig.text());
-  if (gitHead) project.detected.branch = parseGitHead(await gitHead.text());
+  if (gitHead) {
+    const text = f => f ? f.text() : Promise.resolve('');
+    const under = prefix => files.map(rel).filter(p => p.startsWith(prefix) && !p.slice(prefix.length).includes('/')).map(p => p.slice(prefix.length));
+    const packed = await text(files.find(f => rel(f) === '.git/packed-refs'));
+    const det = detectDefaultBranch({
+      originHead: await text(files.find(f => rel(f) === '.git/refs/remotes/origin/HEAD')),
+      localBranches: [...under('.git/refs/heads/'), ...packedBranches(packed, 'refs/heads/')],
+      remoteBranches: [...under('.git/refs/remotes/origin/'), ...packedBranches(packed, 'refs/remotes/origin/')],
+      head: await gitHead.text()
+    });
+    project.detected.branch = det.branch; project.detected.branchSource = det.source;
+  }
   const appNames = new Set(files.map(f => /^apps\/([^/]+)\//.exec(rel(f))).filter(Boolean).map(m => m[1]).filter(n => !VALIDATORS.appName(n)));
   if (appNames.size) project.detected.apps = [...appNames].sort();
   readFiles(entries, rootName === 'docs' ? '' : rootName);
@@ -1311,11 +1397,22 @@ function renderListSection(kind) {
       name.addEventListener('change', () => { row.name = name.value.trim().toLowerCase(); saveSetup(); updateSetupProgress(); draw(); });
       r.appendChild(cellWith(name, 'name'));
       if (isApps) {
-        const kindSel = el('select', { class: 'field-select', 'aria-label': 'Kind' });
-        kindSel.appendChild(el('option', { value: '' }, 'Choose…'));
-        APP_KINDS.forEach(k => { const o = el('option', { value: k }, esc(k)); if (row.kind === k) o.selected = true; kindSel.appendChild(o); });
-        kindSel.addEventListener('change', () => { row.kind = kindSel.value; saveSetup(); updateSetupProgress(); draw(); });
-        r.appendChild(cellWith(kindSel, 'kind'));
+        // One or more kinds, e.g. Desktop client + Mobile client for a Tauri or Flutter app.
+        const kinds = el('div', { class: 'kind-chips', role: 'group', 'aria-label': 'Kind (choose one or more)' });
+        const chosen = appKinds(row);
+        APP_KINDS.forEach(k => {
+          const lab = el('label', { class: 'kind-chip' + (chosen.includes(k) ? ' on' : '') });
+          const cb = el('input', { type: 'checkbox' }); cb.checked = chosen.includes(k);
+          cb.addEventListener('change', () => {
+            const next = appKinds(row).filter(x => x !== k);
+            if (cb.checked) next.push(k);
+            row.kinds = APP_KINDS.filter(x => next.includes(x)); delete row.kind;
+            saveSetup(); updateSetupProgress(); draw();
+          });
+          lab.append(cb, document.createTextNode(k.replace(' client', '')));
+          kinds.appendChild(lab);
+        });
+        r.appendChild(cellWith(kinds, 'kind'));
       }
       const owner = el('input', { class: 'field-input', placeholder: '@username (optional)', 'aria-label': 'Code owner' });
       owner.value = row.owner || '';
@@ -1628,25 +1725,29 @@ function renderAddedList() {
 // ═══════════════════════════════════════════════════════
 // EXPORT
 // ═══════════════════════════════════════════════════════
-async function fileExists(dir, name) {
-  try { await dir.getFileHandle(name); return true; } catch (e) { return false; }
-}
 
 // Writes a review into docs/reviews/. Re-saving in the same session overwrites the
-// same file; otherwise an existing file of the same name gets a numeric suffix.
+// same file. Otherwise, if the newest existing review of this document records the
+// same thing (only the date, reviewer, status or resolutions differ), nothing is
+// written; else a new file is created, with a numeric suffix if the name is taken.
+// Returns { path, unchanged }.
 async function saveReviewToFolder(target, md, date) {
   const perm = await project.docsDir.requestPermission({ mode: 'readwrite' });
   if (perm !== 'granted') throw new Error('Permission to write to the folder was not granted.');
   const dir = await project.docsDir.getDirectoryHandle('reviews', { create: true });
   let name = target.savedName;
   if (!name) {
+    const names = [];
+    for await (const [n, h] of dir.entries()) if (h.kind === 'file') names.push(n);
+    const latest = latestReviewFile(names, target.path);
+    if (latest && sameReview(await readText(dir, latest), md)) return { path: project.docsDirPath + 'reviews/' + latest, unchanged: true };
     let n = 1;
-    do { name = reviewFileName(target.path, date, n++); } while (await fileExists(dir, name));
+    do { name = reviewFileName(target.path, date, n++); } while (names.includes(name));
   }
   const fh = await dir.getFileHandle(name, { create: true });
   const w = await fh.createWritable(); await w.write(md); await w.close();
   target.savedName = name;
-  return project.docsDirPath + 'reviews/' + name;
+  return { path: project.docsDirPath + 'reviews/' + name, unchanged: false };
 }
 
 function downloadFile(name, text) {
@@ -1699,7 +1800,11 @@ function buildExport() {
     const status = sec.querySelector('.output-status');
     const setStatus = (text, cls) => { status.textContent = text; status.className = 'output-status ' + (cls || ''); };
     const save = async () => {
-      try { const p = await saveReviewToFolder(target, md, date); sec.querySelector('.name').textContent = p; setStatus('✓ Saved', 'ok'); }
+      try {
+        const r = await saveReviewToFolder(target, md, date);
+        sec.querySelector('.name').textContent = r.path;
+        if (r.unchanged) setStatus('No changes since this file; not saved again', 'ok'); else setStatus('✓ Saved', 'ok');
+      }
       catch (e) { setStatus('Save failed: ' + e.message, 'err'); }
     };
     if (canSave) sec.querySelector('.act-save').addEventListener('click', save);
