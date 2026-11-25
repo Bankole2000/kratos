@@ -1,0 +1,270 @@
+# CI for every PR and every push to main. The commands match the README Commands table;
+# keep the two in sync. Add a job when an SDK or apps/mcp is created.
+#
+# How it works:
+# - "changes" works out which parts a PR touches. Shared Rust code (packages/types,
+#   Cargo files) runs api and app; shared JS code (packages/, pnpm files) runs packages,
+#   web and app; the OpenAPI spec runs everything that consumes it.
+# - "changes" also reports whether apps/web and apps/app exist yet. Their jobs are skipped
+#   until the app's package.json lands, and switch on by themselves after that. The same
+#   goes for the packages/ui steps in "packages".
+# - Each job runs only when its part changed (it shows as skipped otherwise).
+#   workflow_dispatch runs every job whose app exists.
+# - "ci-ok" runs last and fails if any job failed or was cancelled; skipped counts as ok.
+#   Make "ci-ok" the ONLY required status check in branch protection: requiring the other
+#   jobs directly would block PRs whose jobs were skipped.
+#
+# Keeping CI fast and affordable:
+# - Lint, typecheck, unit and integration tests and quick builds only, on ubuntu-latest.
+#   Signed Tauri builds for Windows, macOS, Android and iOS run only in release.yml (macOS
+#   runners are billed at a much higher rate).
+# - Rust checks run per package (-p api -p types, and the app's own manifest), never
+#   --workspace: once apps/app/src-tauri is a workspace member, building it on Linux needs
+#   the WebKitGTK system packages, which only the app job installs.
+#
+# Actions are pinned to a full commit SHA, with the release tag in a comment. Dependabot
+# (.github/dependabot.yml) proposes updates and keeps the comment in step.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # One run per PR (or per branch for pushes); a new push cancels the superseded PR run.
+  # Runs on main are never cancelled, so every merge commit gets a result.
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_TERM_COLOR: always
+  # sqlx-cli is installed with exactly this version (it matches sqlx in Cargo.lock).
+  SQLX_CLI_VERSION: 0.9.1
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+      packages: ${{ steps.filter.outputs.packages }}
+      web: ${{ steps.filter.outputs.web }}
+      app: ${{ steps.filter.outputs.app }}
+      web-exists: ${{ steps.exists.outputs.web }}
+      app-exists: ${{ steps.exists.outputs.app }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: filter
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        with:
+          filters: |
+            rust: &rust
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'rust-toolchain.toml'
+              - 'rustfmt.toml'
+              - 'packages/types/**'
+              - '.github/workflows/ci.yml'
+            js: &js
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - '.nvmrc'
+              - 'packages/ui/**'
+              - 'packages/api-client-ts/**'
+              - 'openapi/**'
+              - '.github/workflows/ci.yml'
+            api:
+              - *rust
+              - 'apps/api/**'
+              - '.sqlx/**'
+              - 'openapi/**'
+              - 'scripts/bruno-check.mjs'
+            packages:
+              - *js
+            web:
+              - *js
+              - 'apps/web/**'
+            app:
+              - *rust
+              - *js
+              - 'apps/app/**'
+      # Jobs for apps that don't exist yet are skipped (web from TASK-008, app from TASK-009).
+      - id: exists
+        run: |
+          echo "web=$([ -f apps/web/package.json ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "app=$([ -f apps/app/package.json ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+      - name: Summary
+        run: |
+          echo "Changed: api=${{ steps.filter.outputs.api }} packages=${{ steps.filter.outputs.packages }} web=${{ steps.filter.outputs.web }} app=${{ steps.filter.outputs.app }}"
+          echo "Exists: web=${{ steps.exists.outputs.web }} app=${{ steps.exists.outputs.app }}"
+
+  # Repository-wide checks: cheap, so they run on every PR.
+  repo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check for unfilled template placeholders
+        run: bash scripts/check-placeholders.sh
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1 (version from packageManager)
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Prettier (whole repository, once)
+        run: pnpm exec prettier --check .
+
+  api:
+    needs: changes
+    if: needs.changes.outputs.api == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          # Throwaway database that exists only for this job: no password at all, so
+          # nothing secret-looking is committed. Never use trust auth outside CI.
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: platform_core
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres@127.0.0.1:5432/platform_core
+      # Build from the committed .sqlx/ data; "cargo sqlx prepare --check" below checks it
+      # against the real database.
+      SQLX_OFFLINE: 'true'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install Rust from rust-toolchain.toml
+        run: rustup toolchain install && rustc --version
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          cache-bin: false
+      - id: sqlx-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/bin/sqlx
+            ~/.cargo/bin/cargo-sqlx
+          key: sqlx-cli-${{ env.SQLX_CLI_VERSION }}-${{ runner.os }}-${{ runner.arch }}
+      - name: Install sqlx-cli
+        if: steps.sqlx-cache.outputs.cache-hit != 'true'
+        run: cargo install sqlx-cli --version "$SQLX_CLI_VERSION" --locked --no-default-features --features rustls,postgres
+      - run: sqlx migrate run --source apps/api/migrations
+      - run: cargo fmt --all --check
+      - run: cargo clippy -p api -p types --all-targets -- -D warnings
+      # Includes apps/api/tests/openapi.rs, which fails when openapi/openapi.json is stale.
+      - run: cargo test -p api -p types
+      # SQLx query data (.sqlx/) must match the queries and the migrated database.
+      # "--workspace" is sqlx's flag (use the workspace root's .sqlx/); everything after
+      # "--" goes to "cargo check", scoped to the crates that use SQLx so the Tauri crate
+      # (which needs WebKitGTK on Linux) is not built here.
+      - run: cargo sqlx prepare --workspace --check -- --all-targets -p api -p types
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1 (version from packageManager)
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      # Every endpoint in the spec has a Bruno request (Node built-ins only, no install).
+      - run: pnpm bruno:check
+
+  # Shared JS packages: api-client-ts now, packages/ui from TASK-007.
+  packages:
+    needs: changes
+    if: needs.changes.outputs.packages == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1 (version from packageManager)
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # "test" runs check:generated first: fails when the client is stale against the spec.
+      - run: pnpm --filter api-client-ts test
+      - run: pnpm --filter api-client-ts typecheck
+      - name: pnpm --filter ui typecheck
+        if: hashFiles('packages/ui/package.json') != ''
+        run: pnpm --filter ui typecheck
+      - name: pnpm --filter ui test
+        if: hashFiles('packages/ui/package.json') != ''
+        run: pnpm --filter ui test
+
+  web:
+    needs: changes
+    if: >-
+      needs.changes.outputs.web-exists == 'true' &&
+      (needs.changes.outputs.web == 'true' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1 (version from packageManager)
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter web typecheck
+      - run: pnpm --filter web test
+      - run: pnpm --filter web build
+      # E2E (Playwright against a running api) is added with the first M1 journey.
+
+  app:
+    needs: changes
+    if: >-
+      needs.changes.outputs.app-exists == 'true' &&
+      (needs.changes.outputs.app == 'true' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest # Keep on Linux; signed builds for every platform run in release.yml
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Tauri 2 Linux prerequisites (https://v2.tauri.app/start/prerequisites/#linux).
+      - name: Install Tauri system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev \
+            libssl-dev libayatana-appindicator3-dev librsvg2-dev
+      - name: Install Rust from rust-toolchain.toml
+        run: rustup toolchain install && rustc --version
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1 (version from packageManager)
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter app typecheck
+      - run: pnpm --filter app test
+      # Frontend build; it also creates the frontendDist folder that tauri-build needs below.
+      - run: pnpm --filter app build
+      # The manifest path selects the Tauri crate whatever TASK-009 names it.
+      - run: cargo clippy --manifest-path apps/app/src-tauri/Cargo.toml --all-targets -- -D warnings
+      - run: cargo test --manifest-path apps/app/src-tauri/Cargo.toml
+
+  ci-ok:
+    if: always()
+    needs: [changes, repo, api, packages, web, app]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fail if any job failed or was cancelled
+        run: |
+          if ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}; then
+            echo "One or more jobs failed or were cancelled."
+            exit 1
+          fi
+          echo "All jobs passed or were skipped."
