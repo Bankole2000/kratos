@@ -98,10 +98,11 @@ jobs:
           # Throwaway database that exists only for this job: no password at all, so
           # nothing secret-looking is committed. Never use trust auth outside CI.
           POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: platform_core
         ports: ['5432:5432']
         options: --health-cmd pg_isready --health-interval 5s --health-retries 10
     env:
-      DATABASE_URL: postgres://postgres@localhost:5432/postgres
+      DATABASE_URL: postgres://postgres@localhost:5432/platform_core
       SQLX_OFFLINE: 'true'
     steps:
       - uses: actions/checkout@v7
@@ -112,10 +113,11 @@ jobs:
       # - uses: Swatinem/rust-cache@v2
       # - run: cargo fmt --check
       # - run: cargo clippy -p api -- -D warnings
+      # - run: cargo install sqlx-cli --no-default-features --features rustls,postgres
+      # - run: sqlx migrate run --source apps/api/migrations
       # - run: cargo test -p api
       # Generated files must be up to date (TESTING.md, contract tests):
-      # - run: cargo install sqlx-cli --no-default-features --features postgres
-      # - run: cargo sqlx prepare --workspace --check
+      # - run: cargo sqlx prepare --workspace --check -- --all-targets
       # - run: cargo run -p api -- openapi > openapi/openapi.json && git diff --exit-code openapi/
       - name: Fail until configured
         run: |

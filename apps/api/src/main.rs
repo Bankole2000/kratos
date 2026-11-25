@@ -1,5 +1,6 @@
 use std::process::ExitCode;
 
+use api::AppState;
 use api::config::Config;
 
 #[tokio::main]
@@ -26,6 +27,17 @@ async fn main() -> ExitCode {
 
     api::logging::init(&config.log_filter);
 
+    // The pool connects lazily, so the api starts even if Postgres is down; `/health` then
+    // reports the database as down. Migrations are not run here (docs/DEPLOYMENT.md).
+    let db = match api::db::connect_lazy(&config.database_url) {
+        Ok(pool) => pool,
+        Err(error) => {
+            // Log the error only, never the URL: it may contain a password.
+            tracing::error!(%error, "DATABASE_URL is not a valid Postgres URL");
+            return ExitCode::FAILURE;
+        }
+    };
+
     let listener = match tokio::net::TcpListener::bind(config.addr).await {
         Ok(listener) => listener,
         Err(error) => {
@@ -35,7 +47,7 @@ async fn main() -> ExitCode {
     };
     tracing::info!(addr = %config.addr, version = env!("CARGO_PKG_VERSION"), "api listening");
 
-    let result = axum::serve(listener, api::app())
+    let result = axum::serve(listener, api::app(AppState { db }))
         .with_graceful_shutdown(shutdown_signal())
         .await;
     match result {

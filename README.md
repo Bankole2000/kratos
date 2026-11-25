@@ -84,12 +84,13 @@ To avoid holding up building, the owner may approve a document as drafted and re
 
 ## Local development
 - Prerequisites: [rustup](https://rustup.rs/) (the toolchain, Rust 1.100.0 with rustfmt and clippy, is pinned in `rust-toolchain.toml` and installed automatically), plus `sqlx-cli` (`cargo install sqlx-cli --no-default-features --features rustls,postgres`); Node.js 26 (`.nvmrc`) with pnpm 12.23.0 (`packageManager` in `package.json`; install with `npm install -g pnpm@12.23.0`, since Node 25 and later no longer bundle Corepack); Docker for local Postgres; the [Tauri 2 prerequisites](https://v2.tauri.app/start/prerequisites/) for your OS; Android Studio with the NDK for Android builds; Xcode on macOS for iOS builds; the Dart SDK for `sdks/dart`.
-- Configure: for each app, copy `apps/<app>/.env.example` to `apps/<app>/.env` and supply local values. The root `.env.example` covers repository-wide tooling only.
+- Configure: for each app, copy `apps/<app>/.env.example` to `apps/<app>/.env` and supply local values. The root `.env.example` covers repository-wide tooling (docker compose, the `sqlx` CLI and macros): `cp .env.example .env`.
+- Database: `docker compose up -d` starts Postgres 17 on `127.0.0.1:5432` (data in a named volume; trust auth with no password, for local development only). Then apply migrations with `sqlx migrate run --source apps/api/migrations`. `DATABASE_URL` in `.env` is also used at compile time to check SQLx queries; without a database, build with `SQLX_OFFLINE=true` to use the committed `.sqlx/` data. Stop Postgres with `docker compose stop`.
 
 ## Commands
 This table is the single source of truth for project commands. Other documents and agents refer here. Use the "All apps" row to check everything before a PR; use an app's row when working inside that app. There is one row per app, package with its own checks, and `infra`; add or delete rows to match. Write N/A where a command doesn't apply.
 
-The commands below are the intended ones. The root scripts and the api row work since TASK-002; rows for apps not created yet do not. TASK-010 verifies and corrects this table. Start Postgres first with `docker compose up -d` (from TASK-003).
+The commands below are the intended ones. The root scripts and the api row work since TASK-002; rows for apps not created yet do not. TASK-010 verifies and corrects this table. Start Postgres first with `docker compose up -d` and run the api migrations (see Local development); `cargo test -p api` needs it running.
 
 Install everything (repo root): `pnpm install` (Cargo fetches Rust dependencies on first build). Format everything: `pnpm format`.
 
@@ -105,7 +106,7 @@ Install everything (repo root): `pnpm install` (Cargo fetches Rust dependencies 
 | sdk-ts (M3) | N/A | `pnpm --filter sdk-ts test` | N/A | `pnpm --filter sdk-ts lint` | `pnpm --filter sdk-ts typecheck` | `pnpm --filter sdk-ts build` | N/A |
 | sdk-dart (M4) | N/A | `dart test` (in sdks/dart) | N/A | `dart analyze` | N/A | N/A | N/A |
 
-Generated files: `cargo run -p api -- openapi > openapi/openapi.json` (spec), `pnpm --filter api-client-ts generate` (TypeScript client), `cargo sqlx prepare --workspace` (SQLx query data). `cargo test -p api` fails when the committed spec is out of date (`apps/api/tests/openapi.rs`); run the spec command from the repo root in a POSIX shell such as Git Bash (Windows PowerShell 5.1 `>` writes UTF-16).
+Generated files: `cargo run -p api -- openapi > openapi/openapi.json` (spec), `pnpm --filter api-client-ts generate` (TypeScript client), `cargo sqlx prepare --workspace -- --all-targets` (SQLx query data, including queries in tests; needs Postgres running). `cargo test -p api` fails when the committed spec is out of date (`apps/api/tests/openapi.rs`); run the spec command from the repo root in a POSIX shell such as Git Bash (Windows PowerShell 5.1 `>` writes UTF-16).
 
 Infrastructure: none yet (ADR-002, depends on D1).
 
