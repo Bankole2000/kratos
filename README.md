@@ -99,7 +99,7 @@ Install everything (repo root): `pnpm install` (Cargo fetches Rust dependencies 
 |---|---|---|---|---|---|---|---|
 | All apps (repo root) | — | `pnpm test` | `pnpm e2e` | `pnpm lint` (rustfmt, clippy, each package's lint, Prettier) | `pnpm typecheck` | `pnpm build` | — |
 | api | `cargo run -p api` | `cargo test -p api` | N/A | `cargo clippy -p api -- -D warnings` | N/A (compiler) | `cargo build -p api --release` | `sqlx migrate run --source apps/api/migrations` |
-| web | `pnpm --filter web dev` | `pnpm --filter web test` | `pnpm --filter web e2e` | `pnpm --filter web lint` | `pnpm --filter web typecheck` | `pnpm --filter web build` | N/A |
+| web | `pnpm --filter web dev` (http://localhost:13000; api URL from `NUXT_PUBLIC_API_BASE_URL`) | `pnpm --filter web test` | TBD (Playwright, with the first M1 journey) | N/A (Prettier from the root) | `pnpm --filter web typecheck` | `pnpm --filter web build` (run with `pnpm --filter web preview`) | N/A |
 | app | `pnpm --filter app tauri dev` (Android: `tauri android dev`; iOS: `tauri ios dev`) | `pnpm --filter app test` | TBD (ADR in M0) | `pnpm --filter app lint` | `pnpm --filter app typecheck` | `pnpm --filter app tauri build` | N/A |
 | ui | N/A | `pnpm --filter ui test` | N/A | `pnpm --filter ui lint` | `pnpm --filter ui typecheck` | N/A | N/A |
 | types | N/A | `cargo test -p types` | N/A | `cargo clippy -p types --all-targets -- -D warnings` | N/A (compiler) | N/A | N/A |

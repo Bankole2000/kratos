@@ -5,3 +5,7 @@ packages:
   - apps/app
   - packages/*
   - sdks/ts
+# Dependency install scripts that pnpm may run. esbuild (pulled in by Nuxt) only uses its
+# postinstall to check its platform binary, which pnpm already installs; skip it.
+allowBuilds:
+  esbuild: false
