@@ -1,0 +1,18 @@
+[package]
+name = "types"
+version = "0.1.0"
+description = "Platform Core shared domain types"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+serde = { version = "1.0.229", features = ["derive"] }
+
+[dev-dependencies]
+serde_json = "1.0.154"

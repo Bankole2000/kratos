@@ -1,0 +1,133 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Platform Core API",
+    "description": "The HTTP API for Platform Core. Every error response uses the `ErrorBody` schema.",
+    "license": {
+      "name": "MIT",
+      "identifier": "MIT"
+    },
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Reports whether the api and its database are up, and the api's version.",
+        "operationId": "health",
+        "responses": {
+          "200": {
+            "description": "The api is running. `status` is `degraded` when the database is down.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected failure (`internal_error`).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "DatabaseStatus": {
+        "type": "string",
+        "description": "Database health. Written in JSON as `\"up\"` or `\"down\"`.",
+        "enum": [
+          "up",
+          "down"
+        ]
+      },
+      "ErrorBody": {
+        "type": "object",
+        "description": "The JSON body of every error response: `{ \"error\": { \"code\", \"message\", \"request_id\" } }`.",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorDetails"
+          }
+        }
+      },
+      "ErrorDetails": {
+        "type": "object",
+        "description": "The fields inside `error` in the error body.",
+        "required": [
+          "code",
+          "message",
+          "request_id"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Stable `snake_case` code that clients can match on.",
+            "example": "not_found"
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable message. It may change between versions.",
+            "example": "The requested resource does not exist."
+          },
+          "request_id": {
+            "type": "string",
+            "description": "The request ID, also sent in the `X-Request-Id` header. Quote it when reporting a problem.",
+            "example": "6f1c2a9e-3b7d-4c55-9a4e-2d8f0b1e7c3a"
+          }
+        }
+      },
+      "Health": {
+        "type": "object",
+        "description": "The body of `GET /health`.",
+        "required": [
+          "status",
+          "version",
+          "database"
+        ],
+        "properties": {
+          "database": {
+            "$ref": "#/components/schemas/DatabaseStatus",
+            "description": "Whether the database answered."
+          },
+          "status": {
+            "$ref": "#/components/schemas/HealthStatus",
+            "description": "`ok` when everything is up, `degraded` when the database is down."
+          },
+          "version": {
+            "type": "string",
+            "description": "The api crate's version from Cargo.toml.",
+            "example": "0.1.0"
+          }
+        }
+      },
+      "HealthStatus": {
+        "type": "string",
+        "description": "Overall health. Written in JSON as `\"ok\"` or `\"degraded\"`.",
+        "enum": [
+          "ok",
+          "degraded"
+        ]
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "health",
+      "description": "Liveness and version"
+    }
+  ]
+}

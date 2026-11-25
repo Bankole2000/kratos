@@ -1,6 +1,6 @@
 # Technical Specification
 
-Status: Approved | Owner: @Bankole2000 | Version: 1.0 | Last updated: 2026-11-25
+Status: Approved | Owner: @Bankole2000 | Version: 1.1 | Last updated: 2026-11-25
 References: PRD.md, DESIGN.md, platform-core.md (guiding principles, SDK specification)
 
 ## Architecture overview
@@ -55,13 +55,13 @@ Significant modules within each component.
 | api | http | Router, `/v1` prefix, request IDs, error responses, OpenAPI generation | auth, all feature modules | NFR-001 |
 | api | auth | Resolves the credential (project key, PAT, admin session), checks expiry, revocation and scopes, records last use | db | FR-012 to FR-016 |
 | api | audit | Writes and queries audit entries; called by every write | db | FR-017, FR-018 |
-| api | projects | Projects, status, archive; links and their order | auth, audit | FR-001 to FR-006 |
-| api | costs | Costs, monthly burn, currency conversion | projects, reference | FR-007 to FR-010 |
-| api | keys | API keys and PATs: create, list, revoke | auth, audit | FR-011 to FR-016 |
+| api | projects | Projects, status, archive; components; links and their order | auth, audit | FR-001 to FR-006, FR-036 to FR-038 |
+| api | costs | Costs, monthly burn, currency conversion, component subtotals | projects, reference | FR-007 to FR-010, FR-039 |
+| api | keys | API keys and PATs: create, list, revoke | auth, audit | FR-011 to FR-016, FR-040 |
 | api | reference (read path) | Datasets, versions, seeding, caching and ETags | db | FR-019 to FR-022 |
-| api | ingest (write path) | Batch endpoint, validation, deduplication | auth, db | FR-023, FR-024 |
+| api | ingest (write path) | Batch endpoint, validation, deduplication; stamps each event with the key's component | auth, db | FR-023, FR-024, FR-040, FR-042 |
 | api | limits | Per-key and per-token rate limiting | auth | FR-025 |
-| api | metrics | Event feed, volume, revenue, errors, last ping, portfolio overview; retention job | db | FR-026 to FR-030 |
+| api | metrics | Event feed, volume, revenue, errors, last ping, portfolio overview; component and platform filters; retention job | db | FR-026 to FR-030, FR-041, FR-042 |
 | ui | screens | Every dashboard screen (DESIGN.md), written once | api-client-ts | FR-035 |
 | ui | client | Configured API client and auth handling, injected by web and app | api-client-ts | FR-015 |
 | sdk-ts, sdk-dart, sdk-rust | core | Queue, batching, retry with backoff and jitter, offline store, sampling, reference cache | generated client | FR-031 to FR-033, NFR-006 |
@@ -74,14 +74,17 @@ Significant modules within each component.
 | admin_users | id, email, password_hash (Argon2), created_at | One row in the MVP; becomes users in v3 (F13). |
 | admin_sessions | id, user_id, expires_at, revoked_at | Only if ADR-008 chooses server-side sessions. |
 | projects | id, slug (unique), name, description, status, stack_tags (text[]), live_url, notes, archived_at, created_at, updated_at | `status` is a Postgres enum or checked text (FR-003). Never deleted. |
-| project_links | id, project_id, type, label, url, position | `position` gives the order (FR-006). |
-| costs | id, project_id, name, vendor, amount (numeric), currency, cycle, start_date, end_date | Amounts are exact decimals, never floats. |
-| credentials | id, kind (project_key, pat), project_id (null for PAT), user_id (null for project key), name, prefix, hash, scopes (text[]), environment, expires_at, revoked_at, last_used_at, created_at | One table for keys and tokens, since storage, expiry and revoke rules are shared (FR-016). Unique index on `hash`. |
+| components | id, project_id, slug, name, kind, description, live_url, status (active, retired), created_at, updated_at | Unique (project_id, slug) and unique (project_id, id), the target of the composite foreign keys below. `kind` and `status` are checked text. Never deleted (BR-007). |
+| project_links | id, project_id, component_id (null), type, label, url, position | `position` gives the order (FR-006). |
+| costs | id, project_id, component_id (null), name, vendor, amount (numeric), currency, cycle, start_date, end_date | Amounts are exact decimals, never floats. |
+| credentials | id, kind (project_key, pat), project_id (null for PAT), component_id (null; always null for PAT), user_id (null for project key), name, prefix, hash, scopes (text[]), environment, expires_at, revoked_at, last_used_at, created_at | One table for keys and tokens, since storage, expiry and revoke rules are shared (FR-016). Unique index on `hash`. |
 | audit_log | id, at, actor_kind (app, person, agent), actor_type (project_key, pat, admin_session), actor_id, action, target_type, target_id, project_id, request_id | Append-only (BR-007). Index on (project_id, at). |
 | datasets | name, version, updated_at | One row per dataset; `version` bumps on every change (FR-022). |
 | countries, currencies, phone_codes, timezones, languages | code (primary key) and dataset fields | Seeded by migrations or a seed command from the sources in FR-019. |
 | exchange_rates | base, quote, rate, rate_date, source | Only if D5 needs stored rates. |
-| events | id, project_id, credential_id, client_event_id, type, name, properties (jsonb), occurred_at, received_at, sdk | Unique (project_id, client_event_id) for deduplication (FR-024). Index on (project_id, type, occurred_at). Partitioning by month TBD with D3. |
+| events | id, project_id, component_id (null), credential_id, client_event_id, type, name, properties (jsonb), platform (null), occurred_at, received_at, sdk | Unique (project_id, client_event_id) for deduplication (FR-024). `component_id` is copied from the key at ingestion, never taken from the request (FR-040). Indexes on (project_id, type, occurred_at) and (project_id, component_id, occurred_at). Partitioning by month TBD with D3. |
+
+Every `component_id` column is nullable and uses a composite foreign key `(project_id, component_id) → components (project_id, id)`, so the database itself rejects a component from another project (BR-009). These columns exist from each table's first migration, so no later migration touches tables with data.
 | event_daily_totals | project_id, day, type, count, revenue | Roll-up table if D3 chooses roll-ups (FR-026). |
 
 ## API and integrations
@@ -93,16 +96,17 @@ All endpoints are under `/v1` and take `Authorization: Bearer <key or token>`, e
 | API-002 | `POST /v1/auth/login`, `POST /v1/auth/logout` | Email and password → session (ADR-008) | Rate limited; one generic error for wrong email or password | FR-015 |
 | API-003 | `GET/POST /v1/projects`, `GET/PATCH /v1/projects/{slug}` | Project fields; list filters (status, archived), pagination | `projects:read` / `projects:write` | FR-001 to FR-004, FR-030 |
 | API-004 | `POST /v1/projects/{slug}/archive`, `/unarchive` | — | `projects:write` | FR-004 |
-| API-005 | `GET/POST /v1/projects/{slug}/links`, `PATCH/DELETE /v1/projects/{slug}/links/{id}`, `PUT /v1/projects/{slug}/links/order` | Link fields; ordered list of IDs | `projects:read` / `projects:write` | FR-005, FR-006 |
-| API-006 | `GET/POST /v1/projects/{slug}/costs`, `PATCH /v1/projects/{slug}/costs/{id}`, `GET /v1/costs/burn` | Cost fields; burn per project and total in display currency | `costs:read` / `costs:write` | FR-007 to FR-010 |
-| API-007 | `GET/POST /v1/projects/{slug}/keys`, `POST /v1/projects/{slug}/keys/{id}/revoke` | Name, environment, scopes or preset → full key once | Admin session only (never through a key or token) | FR-011 to FR-014 |
+| API-005 | `GET/POST /v1/projects/{slug}/links`, `PATCH/DELETE /v1/projects/{slug}/links/{id}`, `PUT /v1/projects/{slug}/links/order` | Link fields with optional `component`; `?component=` filter; ordered list of IDs | `projects:read` / `projects:write` | FR-005, FR-006, FR-038 |
+| API-006 | `GET/POST /v1/projects/{slug}/costs`, `PATCH /v1/projects/{slug}/costs/{id}`, `GET /v1/costs/burn` | Cost fields with optional `component`; `?component=` filter; burn per project (with per-component subtotals) and total in display currency | `costs:read` / `costs:write` | FR-007 to FR-010, FR-039 |
+| API-007 | `GET/POST /v1/projects/{slug}/keys`, `POST /v1/projects/{slug}/keys/{id}/revoke` | Name, environment, optional `component`, scopes or preset → full key once | Admin session only (never through a key or token) | FR-011 to FR-014, FR-040 |
 | API-008 | `GET/POST /v1/tokens`, `POST /v1/tokens/{id}/revoke` | Name, scopes, expiry → full token once | Admin session only | FR-016 |
 | API-009 | `GET /v1/projects/{slug}/audit` | Filters: actor, action, time range; pagination | `projects:read` | FR-018 |
 | API-010 | `GET /v1/reference/{dataset}`, `GET /v1/reference/{dataset}/{code}`, `GET /v1/reference/{dataset}?q=` | Entries; dataset version in a response header and field | `reference:read`; `ETag`, `Cache-Control`, 304 on match | FR-019 to FR-021 |
 | API-011 | `PUT/PATCH /v1/reference/{dataset}/{code}` | Entry fields; bumps version | Admin session | FR-022 |
-| API-012 | `POST /v1/events/batch` | Up to N events (OD-002), each with client ID, type, name, timestamp, properties; response lists accepted and duplicate counts | `events:write`; 413 over limit; 429 with `Retry-After` | FR-023 to FR-025 |
-| API-013 | `GET /v1/projects/{slug}/events`, `/metrics/volume`, `/metrics/summary` | Feed (filter by type, cursor), daily counts for 7 or 30 days, revenue, latest errors, last ping | `projects:read` | FR-027 to FR-029 |
+| API-012 | `POST /v1/events/batch` | Up to N events (OD-002), each with client ID, type, name, timestamp, optional platform, properties; the component comes from the key; response lists accepted and duplicate counts | `events:write`; 413 over limit; 429 with `Retry-After` | FR-023 to FR-025, FR-040, FR-042 |
+| API-013 | `GET /v1/projects/{slug}/events`, `/metrics/volume`, `/metrics/summary` | Feed (filter by type, component, platform; cursor), daily counts for 7 or 30 days, revenue, latest errors, last ping (overall and per active component) | `projects:read` | FR-027 to FR-029, FR-041, FR-042 |
 | API-014 | `GET /v1/meta/clients` | Minimum supported app and SDK versions | None | NFR-005 |
+| API-015 | `GET/POST /v1/projects/{slug}/components`, `GET/PATCH /v1/projects/{slug}/components/{component_slug}` | Component fields; list filter `status` (active by default) | `projects:read` / `projects:write`; 409 `component_slug_taken` | FR-036, FR-037 |
 
 Integrations: exchange rates from a source chosen in D5, fetched on a schedule with timeouts and retries; a failed fetch keeps the last known rates and shows their date (FR-010). Live updates for the event feed (FR-027) use polling in the MVP; server-sent events can replace it later without changing the contract.
 
@@ -177,7 +181,8 @@ Decisions marked Accepted were made in platform-core.md and need only confirmati
 | ADR-008 | Dashboard session: TBD (HTTP-only cookie session, or short-lived token with refresh) | Cookies suit Nuxt SSR; Tauri on mobile may need token storage in the OS keychain | Proposed |
 | ADR-009 | SDKs built in order TypeScript → Dart → Rust → Python; generated client plus a thin hand-written layer | Order of need; same behaviour everywhere (SDK specification) | Accepted |
 | ADR-010 | TypeScript client generator: TBD (for example, `openapi-typescript` with `openapi-fetch`) | Must produce types usable in both Nuxt and Vite builds | Proposed |
+| ADR-011 | Projects have one level of optional components (PRD OD-007). An event's component comes from the key that sent it; its platform comes from the SDK | Keeps burn, status and the overview per product while showing each part's health; a key-derived component can't be spoofed or mistyped by an app; a Tauri app stays one component across platforms | Accepted |
 
 ## Open decisions and approval
-Open: D1, D3 to D8 (platform-core.md section 8), OD-001 to OD-006 (PRD.md), ADR-002, ADR-008, ADR-010, and the installed-client support window.
-Approval: Approved by @Bankole2000 on 2026-11-25, revision 1.0, to start building. Approved as drafted without an item-by-item review; sections are revisited when the milestone that needs them is planned, and open TBDs stay open decisions.
+Open: D1, D3 to D8 (platform-core.md section 8), OD-001 to OD-004 (PRD.md), ADR-002, ADR-008, ADR-010, and the installed-client support window.
+Approval: Approved by @Bankole2000 on 2026-11-25, revision 1.0, to start building. Approved as drafted without an item-by-item review; sections are revisited when the milestone that needs them is planned, and open TBDs stay open decisions. Revision 1.1 adds project components (PRD OD-007), approved as drafted by @Bankole2000 on 2026-11-25.

@@ -5,6 +5,13 @@ use api::config::Config;
 
 #[tokio::main]
 async fn main() -> ExitCode {
+    // `cargo run -p api -- openapi > openapi/openapi.json` writes the OpenAPI spec and exits.
+    // It runs before config and logging so nothing else reaches stdout.
+    if std::env::args().nth(1).as_deref() == Some("openapi") {
+        print!("{}", api::openapi::spec_json());
+        return ExitCode::SUCCESS;
+    }
+
     // Load apps/api/.env (or .env in the current folder) if present. Real environment
     // variables win over the file. A missing file is fine.
     let _ = dotenvy::from_path(concat!(env!("CARGO_MANIFEST_DIR"), "/.env"));

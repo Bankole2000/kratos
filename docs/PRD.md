@@ -1,6 +1,6 @@
 # Product Requirements Document
 
-Status: Approved | Owner: @Bankole2000 | Version: 1.0 | Last updated: 2026-11-25
+Status: Approved | Owner: @Bankole2000 | Version: 1.1 | Last updated: 2026-11-25
 References: platform-core.md (project overview, guiding principles and SDK specification)
 
 ## Vision and problem
@@ -9,7 +9,7 @@ Platform Core (code name kratos) is the one service every app in the portfolio t
 Today each app would need its own copy of reference data (countries, currencies, phone codes, timezones, languages), and there is no single place to see the status, costs, links and live health of every project. Because one person owns every consumer app, splitting portfolio tracking from reference data would mean two servers, two SDKs and two deployments for the same consumers.
 
 Platform Core does four jobs:
-1. Tracks projects: status, costs, links and live metrics, in one dashboard.
+1. Tracks projects and their components (web, mobile, desktop, server and other parts): status, costs, links and live metrics, in one dashboard.
 2. Serves reference data, so no app embeds its own copy.
 3. Collects metrics that apps report through an SDK: events, revenue, errors, sessions, builds and feedback.
 4. Issues API keys and tokens: apps identify themselves with project API keys; people and AI agents use personal access tokens.
@@ -73,6 +73,13 @@ Priority uses MoSCoW: Must, Should, Could, Won't. IDs are stable: never renumber
 | FR-033 | F11 | A Rust SDK, published to crates.io, implements the same SDK specification. | SDK | The SDK conformance tests pass. | Could |
 | FR-034 | — | Platform Core reports its own metrics through its own SDK (principle 21). | All | Platform Core appears as a project in its own dashboard with live events. | Should |
 | FR-035 | — | The dashboard works in the browser, in the desktop app (Windows, macOS, Linux) and in the mobile app (Android, iOS). | All | Every MVP screen passes the release acceptance checks on each platform (TESTING.md). | Must |
+| FR-036 | F1 | The admin can add components to a project: name, slug (unique within the project), kind (`web`, `mobile`, `desktop`, `server`, `worker`, `library`, `cli`, `infra`, `other`), optional description and optional live URL. Components are optional; a project without any works as before. | All | A created component appears in the project's component list with every field as entered; a duplicate slug in the same project is rejected with `component_slug_taken`; the same slug in another project is accepted. | Must |
+| FR-037 | F1 | The admin can edit a component and set its status to `active` or `retired`. Components are never deleted; retired components are hidden by default and keep their links, costs, keys and events. | All | Edited values are shown after reload and recorded in the audit trail; a retired component disappears from the default list, appears with "show retired" on, and keeps all related data. No delete action exists. | Must |
+| FR-038 | F2 | A link can optionally be tagged with one of its project's components. | All | The tag is shown on the link; filtering links by component shows only that component's links and untagged links stay visible under the project; a component from another project is rejected. | Must |
+| FR-039 | F3 | A cost can optionally be tagged with one of its project's components. Project burn and one-off totals include every cost, tagged or not. | All | Burn and one-off totals are the same before and after tagging; the cost list can be filtered by component and shows a per-component subtotal; a component from another project is rejected. | Must |
+| FR-040 | F4, F7 | A project key can optionally be tied to one of its project's components. Events sent with that key are stored against that component; events sent with a key that has no component have none. | All | Events sent with a component's key appear under that component; events from a project-wide key appear under the project only; a component from another project is rejected; the component of an existing key cannot be changed. | Must |
+| FR-041 | F8 | The event feed, volume charts, revenue, latest errors and last ping can be filtered by component, and the project overview shows the last ping of each active component. | All | With the filter set, every figure counts only that component's events; a component with no ping in TBD minutes is marked as not reporting while the others are not. | Must |
+| FR-042 | F7, F9 | SDKs attach the platform they run on (`web`, `ios`, `android`, `windows`, `macos`, `linux`, `server`) to every event, and the event feed can be filtered by platform. | API, SDKs | An event sent from each platform is stored with the matching value; an event without one is stored with none; the feed filter shows only the chosen platform. | Should |
 
 ## Out of scope / stretch
 Later phases from platform-core.md section 5. Their IDs are reserved there.
@@ -93,11 +100,15 @@ Later phases from platform-core.md section 5. Their IDs are reserved there.
 - BR-002: The publishable preset grants `events:write` and `reference:read` only. Publishable keys are the only keys allowed in browser, Tauri and mobile apps.
 - BR-003: The secret preset grants all scopes for its project and is for server-side use only.
 - BR-004: The agent preset is read-only by default; write scopes are added on purpose, per key or token.
-- BR-005: A project key belongs to one project and one environment. A personal access token belongs to a user and reaches all of that user's projects, within its scopes.
+- BR-005: A project key belongs to one project and one environment, and optionally to one component of that project, fixed when the key is created. A personal access token belongs to a user and reaches all of that user's projects, within its scopes.
 - BR-006: Key and token prefixes: `pc_sk_` (secret), `pc_pk_` (publishable), `pc_pat_` (personal access token). Agent-preset keys use the prefix of their scope set (OD-004).
-- BR-007: Projects and audit entries are never deleted.
+- BR-007: Projects, components and audit entries are never deleted.
+- BR-009: A component belongs to exactly one project and never moves to another. Anything tagged with a component (link, cost, key, event) belongs to the same project.
+- BR-010: A part that is started, paused or abandoned on its own, has its own users or costs, or is shared by several projects is a separate project. A part that ships as piece of one product is a component of that project.
 - BR-008: Within `/v1`, API changes are additive only; a breaking change needs `/v2`.
-- **Project key**: an API key that belongs to one project and environment.
+- **Project key**: an API key that belongs to one project and environment, and optionally one component.
+- **Component**: a separately built and deployed part of a project, such as its web app, mobile app, desktop app or server (BR-010). Projects have one level of components; components have no sub-components.
+- **Platform**: where an event's code ran (`web`, `ios`, `android`, `windows`, `macos`, `linux`, `server`). One component can run on several platforms; for example, a Tauri app is one component on five platforms. Reported by the SDK, not configured.
 - **Personal access token (PAT)**: a token that belongs to a user and acts for them across projects.
 - **Scope**: one permission, such as `events:write` or `projects:read`. The final list is open (D8).
 - **Preset**: a named set of scopes (secret, publishable, agent).
@@ -132,6 +143,7 @@ Decisions D1 to D8 are tracked in platform-core.md section 8 (D2 is decided: SQL
 - OD-004: Do agent keys get their own prefix (for example, `pc_ak_`) so they are recognizable in logs? Owner: @Bankole2000. Needed by: M1, together with D8.
 - OD-005: Nuxt version for `apps/web`. **Decided 2026-11-25: Nuxt 4**, since Nuxt 3 no longer gets security fixes. This replaces "Nuxt 3" in platform-core.md section 2.
 - OD-006: License. **Decided (2026-11-25 project setup review): MIT** for the whole repository, SDKs included. See LICENSE.
+- OD-007: How are the parts of a product (web app, mobile app, server, and so on) tracked? **Decided 2026-11-25: as components**, one level under a project (FR-036 to FR-042), rather than as separate projects (which would split burn, status and the portfolio overview) or nested subprojects (more complexity than one owner needs). A key's component is optional and comes from the key, so apps cannot mislabel their events; the platform is reported by the SDK. Components have only `active` and `retired` status; the lifecycle stays on the project.
 
 ## Approval
-Approved by @Bankole2000 on 2026-11-25, revision 1.0, to start building. Approved as drafted without an item-by-item review; sections are revisited when the milestone that needs them is planned, and open TBDs stay open decisions.
+Approved by @Bankole2000 on 2026-11-25, revision 1.0, to start building. Approved as drafted without an item-by-item review; sections are revisited when the milestone that needs them is planned, and open TBDs stay open decisions. Revision 1.1 adds project components (PRD OD-007), approved as drafted by @Bankole2000 on 2026-11-25.

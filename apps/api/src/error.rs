@@ -10,6 +10,7 @@
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use serde::Serialize;
+use utoipa::ToSchema;
 
 #[derive(Debug, Clone)]
 pub struct ApiError {
@@ -65,16 +66,24 @@ impl IntoResponse for ApiError {
     }
 }
 
-#[derive(Serialize)]
-struct ErrorBody<'a> {
-    error: ErrorDetails<'a>,
+/// The JSON body of every error response: `{ "error": { "code", "message", "request_id" } }`.
+#[derive(Serialize, ToSchema)]
+pub struct ErrorBody {
+    pub error: ErrorDetails,
 }
 
-#[derive(Serialize)]
-struct ErrorDetails<'a> {
-    code: &'a str,
-    message: &'a str,
-    request_id: &'a str,
+/// The fields inside `error` in the error body.
+#[derive(Serialize, ToSchema)]
+pub struct ErrorDetails {
+    /// Stable `snake_case` code that clients can match on.
+    #[schema(example = "not_found")]
+    pub code: String,
+    /// Human-readable message. It may change between versions.
+    #[schema(example = "The requested resource does not exist.")]
+    pub message: String,
+    /// The request ID, also sent in the `X-Request-Id` header. Quote it when reporting a problem.
+    #[schema(example = "6f1c2a9e-3b7d-4c55-9a4e-2d8f0b1e7c3a")]
+    pub request_id: String,
 }
 
 impl ApiError {
@@ -82,9 +91,9 @@ impl ApiError {
     pub fn with_request_id(&self, request_id: &str) -> Response {
         let body = ErrorBody {
             error: ErrorDetails {
-                code: self.code,
-                message: &self.message,
-                request_id,
+                code: self.code.to_string(),
+                message: self.message.clone(),
+                request_id: request_id.to_string(),
             },
         };
         (self.status, axum::Json(body)).into_response()

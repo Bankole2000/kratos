@@ -101,11 +101,12 @@ Install everything (repo root): `pnpm install` (Cargo fetches Rust dependencies 
 | web | `pnpm --filter web dev` | `pnpm --filter web test` | `pnpm --filter web e2e` | `pnpm --filter web lint` | `pnpm --filter web typecheck` | `pnpm --filter web build` | N/A |
 | app | `pnpm --filter app tauri dev` (Android: `tauri android dev`; iOS: `tauri ios dev`) | `pnpm --filter app test` | TBD (ADR in M0) | `pnpm --filter app lint` | `pnpm --filter app typecheck` | `pnpm --filter app tauri build` | N/A |
 | ui | N/A | `pnpm --filter ui test` | N/A | `pnpm --filter ui lint` | `pnpm --filter ui typecheck` | N/A | N/A |
+| types | N/A | `cargo test -p types` | N/A | `cargo clippy -p types --all-targets -- -D warnings` | N/A (compiler) | N/A | N/A |
 | api-client-ts | N/A | N/A | N/A | N/A | `pnpm --filter api-client-ts typecheck` | `pnpm --filter api-client-ts generate` | N/A |
 | sdk-ts (M3) | N/A | `pnpm --filter sdk-ts test` | N/A | `pnpm --filter sdk-ts lint` | `pnpm --filter sdk-ts typecheck` | `pnpm --filter sdk-ts build` | N/A |
 | sdk-dart (M4) | N/A | `dart test` (in sdks/dart) | N/A | `dart analyze` | N/A | N/A | N/A |
 
-Generated files: `cargo run -p api -- openapi > openapi/openapi.json` (spec), `pnpm --filter api-client-ts generate` (TypeScript client), `cargo sqlx prepare --workspace -- --all-targets` (SQLx query data, including queries in tests; needs Postgres running).
+Generated files: `cargo run -p api -- openapi > openapi/openapi.json` (spec), `pnpm --filter api-client-ts generate` (TypeScript client), `cargo sqlx prepare --workspace -- --all-targets` (SQLx query data, including queries in tests; needs Postgres running). `cargo test -p api` fails when the committed spec is out of date (`apps/api/tests/openapi.rs`); run the spec command from the repo root in a POSIX shell such as Git Bash (Windows PowerShell 5.1 `>` writes UTF-16).
 
 Infrastructure: none yet (ADR-002, depends on D1).
 

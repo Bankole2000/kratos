@@ -1,6 +1,6 @@
 # Product Design
 
-Status: Approved | Owner: @Bankole2000 | Version: 1.0 | Last updated: 2026-11-25
+Status: Approved | Owner: @Bankole2000 | Version: 1.1 | Last updated: 2026-11-25
 References: PRD.md
 
 ## Platforms and navigation
@@ -14,7 +14,7 @@ Every screen is written once in `packages/ui` and looks the same on every platfo
 
 Hierarchy:
 - Portfolio (UI-002)
-  - Project (UI-003), with tabs: Overview, Links, Costs, Keys, Metrics, Audit
+  - Project (UI-003), with tabs: Overview, Components, Links, Costs, Keys, Metrics, Audit
 - Reference data (UI-010)
 - Personal access tokens (UI-011)
 - Settings (UI-012)
@@ -29,23 +29,25 @@ Hierarchy:
 - FLOW-007 (FR-014, FR-016): Keys or Tokens → Revoke on a row → confirm, naming the key → the row shows Revoked.
 - FLOW-008 (FR-027 to FR-029): Portfolio → a project with recent errors → Metrics → filter the feed to `error` → open an event to see its details.
 - FLOW-009 (FR-022): Reference data → choose a dataset → search → edit an entry → Save → the dataset version increases.
+- FLOW-010 (FR-036, FR-040): Project → Components → Add component → name, kind → Save. Then Keys → New key → pick the component → Create; the SDK set-up hint names the component. Events sent with that key appear under the component in Metrics.
 
 ## Screens
 | ID | Screen | Platforms | Requirements | Actions and states |
 |---|---|---|---|---|
 | UI-001 | Sign in | All | FR-015 | Sign in; loading; invalid credentials; rate limited; offline |
 | UI-002 | Portfolio overview | All | FR-009, FR-030 | List or cards of projects with status, burn, last activity; filter by status; show archived; total monthly burn; new project; empty (no projects yet); loading; error; offline (cached data with a banner) |
-| UI-003 | Project overview | All | FR-002, FR-003, FR-004, FR-029 | Edit, change status, archive; status, burn, revenue this month, latest errors, last ping (marked "not reporting" when stale); loading; error |
+| UI-003 | Project overview | All | FR-002, FR-003, FR-004, FR-029, FR-041 | Edit, change status, archive; status, burn, revenue this month, latest errors, last ping (marked "not reporting" when stale); one row per active component with its kind and last ping; loading; error |
 | UI-004 | Project form | All | FR-001, FR-002 | Create or edit; field validation; duplicate slug; saving |
-| UI-005 | Links tab | All | FR-005, FR-006 | Add, edit, remove, reorder, open link; empty |
-| UI-006 | Costs tab | All | FR-007, FR-008, FR-010 | Add, edit cost; burn and one-off totals; converted amounts with rate date; empty |
-| UI-007 | Keys tab | All | FR-011 to FR-014 | Create key (with show-once dialog), revoke; prefix, environment, scopes, expiry, last used, revoked state; empty |
-| UI-008 | Metrics tab | All | FR-027 to FR-029 | Live feed with type filter and event details; 7 and 30 day volume chart; empty (with SDK setup hint and the project's publishable key prefix); loading |
+| UI-005 | Links tab | All | FR-005, FR-006, FR-038 | Add, edit, remove, reorder, open link; optional component picker and component chip on each link; filter by component; empty |
+| UI-006 | Costs tab | All | FR-007, FR-008, FR-010, FR-039 | Add, edit cost; optional component picker; burn and one-off totals; per-component subtotals and filter; converted amounts with rate date; empty |
+| UI-007 | Keys tab | All | FR-011 to FR-014, FR-040 | Create key (with show-once dialog and an optional component, "whole project" by default), revoke; prefix, environment, component, scopes, expiry, last used, revoked state; empty |
+| UI-008 | Metrics tab | All | FR-027 to FR-029, FR-041, FR-042 | Live feed with type, component and platform filters and event details; 7 and 30 day volume chart; the component filter applies to every figure; empty (with SDK setup hint and the project's publishable key prefix); loading |
 | UI-009 | Audit tab | All | FR-018 | Entries newest first; filter by actor; actor kind shown as app, person or agent; empty |
 | UI-010 | Reference data | All | FR-019, FR-022 | Choose dataset, search, view and edit entries; dataset version; saving; error |
 | UI-011 | Personal access tokens | All | FR-016, FR-014 | Create token (show-once dialog), revoke; scopes, expiry, last used; empty |
 | UI-012 | Settings | All | FR-010, FR-015 | Display currency (D5), change password, sign out, app version |
 | UI-013 | Update required | app | NFR-005 | Shown when the installed app is below the minimum supported version; links to the store or download |
+| UI-014 | Components tab | All | FR-036, FR-037 | List of components with kind icon, status, live URL and last ping; add and edit (name, slug suggested from the name, kind, description, live URL); retire and restore; "show retired"; duplicate slug shown on the slug field; empty (explains that components are optional and when to use them) |
 
 ## Visual guidelines
 - Vuetify 3 components and theming, with light and dark themes following the system setting. Brand colours and typography TBD.
@@ -64,4 +66,4 @@ None yet. Wireframes TBD.
 - D4: which web pages are public (affects SSR and SEO work in `apps/web`).
 - Brand colours, typography and logo.
 - Minimum desktop and mobile OS versions.
-Approval: Approved by @Bankole2000 on 2026-11-25, revision 1.0, to start building. Approved as drafted without an item-by-item review; sections are revisited when the milestone that needs them is planned, and open TBDs stay open decisions.
+Approval: Approved by @Bankole2000 on 2026-11-25, revision 1.0, to start building. Approved as drafted without an item-by-item review; sections are revisited when the milestone that needs them is planned, and open TBDs stay open decisions. Revision 1.1 adds project components (PRD OD-007), approved as drafted by @Bankole2000 on 2026-11-25.

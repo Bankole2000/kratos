@@ -1,6 +1,6 @@
 # Development Roadmap
 
-Status: Approved | Owner: @Bankole2000 | Version: 1.0 | Last updated: 2026-11-25
+Status: Approved | Owner: @Bankole2000 | Version: 1.1 | Last updated: 2026-11-25
 References: PRD.md, DESIGN.md, TECHNICAL.md, TESTING.md, platform-core.md section 7
 
 ## Milestones
@@ -9,10 +9,10 @@ This table is the source of truth for milestone names; GitHub milestones must ma
 | Milestone | Outcome | Exit criteria |
 |---|---|---|
 | M0 - Foundation | Runnable skeleton of every MVP app | Cargo and pnpm workspaces set up; api serves `/health` with Postgres and migrations; OpenAPI is generated and committed; web and app (desktop) render a shared `packages/ui` screen that calls the API; CI builds and checks everything |
-| M1 - Core registry | Projects, links, keys, tokens, admin login and audit trail | FR-001 to FR-006 and FR-011 to FR-018 pass their acceptance tests in web and app |
+| M1 - Core registry | Projects and their components, links, keys, tokens, admin login and audit trail | FR-001 to FR-006, FR-011 to FR-018 and FR-036 to FR-038 pass their acceptance tests in web and app; keys can be tied to a component (the key part of FR-040) |
 | M2 - Reference data | Reference datasets served and editable | FR-019 to FR-022 pass their acceptance tests |
-| M3 - Metrics | Ingestion, metrics dashboard and the TypeScript SDK | FR-023, FR-024, FR-027 to FR-031 and FR-034 pass; Platform Core reports its own metrics |
-| M4 - Costs and Dart SDK | Cost tracking with currency conversion; Flutter apps can report metrics | FR-007 to FR-010 and FR-032 pass |
+| M3 - Metrics | Ingestion, metrics dashboard and the TypeScript SDK | FR-023, FR-024, FR-027 to FR-031, FR-034 and FR-040 to FR-042 pass; Platform Core reports its own metrics, with one component per app |
+| M4 - Costs and Dart SDK | Cost tracking with currency conversion; Flutter apps can report metrics | FR-007 to FR-010, FR-032 and FR-039 pass |
 | M5 - Hardening and launch | Production deployment and signed builds | FR-025, FR-026 and FR-035 pass; security checks, backups with a tested restore, production deployment, and signed desktop and mobile builds; release checklist approved |
 | v2 - Post-launch | Rust SDK, then the local MCP server and other v2 features | Defined per release |
 
@@ -40,8 +40,9 @@ Only M0 is planned in detail. Later milestones are broken down once the previous
 - Set up the release workflow and each app's release environment before its first release, not during it.
 - Settle D8 (scope list) and OD-004 before planning M1, and D5 before planning M4; changing scopes later affects issued keys.
 - Map every implementation issue to requirement IDs and acceptance tests (TC IDs).
+- Create each table with its `component_id` column in its first migration (TECHNICAL.md, data model), even when the component features of that table come in a later milestone.
 - Record dependencies and issue URLs; GitHub is the source of truth for task status.
 - Reconcile scope changes with the approved PRD before generating new tasks.
 
 ## Approval
-Approved by @Bankole2000 on 2026-11-25, revision 1.0, to start building. Approved as drafted without an item-by-item review; sections are revisited when the milestone that needs them is planned, and open TBDs stay open decisions.
+Approved by @Bankole2000 on 2026-11-25, revision 1.0, to start building. Approved as drafted without an item-by-item review; sections are revisited when the milestone that needs them is planned, and open TBDs stay open decisions. Revision 1.1 adds project components (PRD OD-007), approved as drafted by @Bankole2000 on 2026-11-25.
