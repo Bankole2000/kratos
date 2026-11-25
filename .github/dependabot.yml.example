@@ -1,8 +1,5 @@
-# Rename to dependabot.yml once your apps and package managers exist.
-# Keep the ecosystems you use and delete the rest.
-#
-# Workspaces with ONE root lockfile (pnpm/npm/yarn workspaces): use directory "/".
-# Apps with their OWN lockfiles: list them with "directories" (wildcards allowed).
+# Rename to dependabot.yml in M0 (TASK-010), once the workspaces exist.
+# One root Cargo workspace and one root pnpm workspace, so both use directory "/".
 version: 2
 updates:
   - package-ecosystem: github-actions
@@ -10,7 +7,16 @@ updates:
     schedule:
       interval: weekly
 
-  # JavaScript/TypeScript workspace with a single root lockfile
+  # Rust: apps/api, packages/types, apps/app/src-tauri and sdks/rust (Cargo workspace)
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  # JavaScript/TypeScript: apps/web, apps/app, packages/ui, packages/api-client-ts, sdks/ts
   - package-ecosystem: npm
     directory: /
     schedule:
@@ -19,30 +25,8 @@ updates:
       minor-and-patch:
         update-types: [minor, patch]
 
-  # Python apps, each with its own requirements/lockfile
-  - package-ecosystem: pip
-    directories: ["/apps/*"]
-    schedule:
-      interval: weekly
-    groups:
-      minor-and-patch:
-        update-types: [minor, patch]
-
-  # Infrastructure-as-code (Terraform shown; adjust to the ADR-002 tool)
-  - package-ecosystem: terraform
-    directory: /infra
-    schedule:
-      interval: weekly
-
-  # Native Android (Gradle) — mobile app
-  - package-ecosystem: gradle
-    directory: /apps/mobile/android
-    schedule:
-      interval: weekly
-
-  # Native iOS (Swift Package Manager) — mobile app. Dependabot does not
-  # support CocoaPods; update Podfile.lock manually or with a scheduled job.
-  - package-ecosystem: swift
-    directory: /apps/mobile/ios
-    schedule:
-      interval: weekly
+  # Dart SDK (from M4). Uncomment when sdks/dart exists.
+  # - package-ecosystem: pub
+  #   directory: /sdks/dart
+  #   schedule:
+  #     interval: weekly

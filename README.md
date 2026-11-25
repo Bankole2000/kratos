@@ -1,5 +1,7 @@
 # Platform Core
 
+Pilot Cockpit for managing multiple software development projects.
+
 The shared foundation for every app in the portfolio: one Rust server and one API that track projects, serve reference data, collect metrics and issue API keys, with an SDK for each language. Code name kratos. See [docs/platform-core.md](docs/platform-core.md) for the overview and guiding principles.
 
 ## Using this template (delete this section after setup)
@@ -73,7 +75,7 @@ Documents drafted or changed by an agent are reviewed by a human with `tools/doc
 
 1. Open `tools/doc-reviewer.html` in a browser (Chrome or Edge can save files directly; other browsers download them), choose **Open project folder** and select the repository root.
 2. Fill in **Project setup** first: project name, repository, owners, apps and conventions. These facts are used across many files, including CODEOWNERS, CI and the GitHub setup script; the repository and default branch are detected from `.git` where possible.
-3. Go through each document item by item: accept, flag or modify it, fill in short placeholders (commands, names, URLs), add missing items, and give the document a verdict. Open placeholders are highlighted red; those answered by setup or filled in turn green. Progress is saved in the browser, so you can stop and come back.
+3. Go through each document: flag or modify what needs to change, fill in short placeholders (commands, names, URLs), add missing items, and give the document a verdict. You don't have to open every item: **✓ Accept rest** (or **✓ All** next to a section heading, or **✓ Accept all** on a document's card) accepts everything you haven't decided on, and the review file notes how many items were accepted that way. Open placeholders are highlighted red; those answered by setup or filled in turn green. Progress is saved in the browser, so you can stop and come back.
 4. Choose **Export reviews**. The setup and each reviewed document get one file in `docs/reviews/` (e.g. `2026-11-25-project-setup.md`, `2026-11-25-PRD.md`). Commit them.
 5. Ask the agent to apply open reviews. It edits the documents and records a resolution for each entry (see AGENTS.md, "Applying doc reviews").
 6. Repeat until the verdict is Approved, then set the document's Status to Approved.
@@ -118,4 +120,4 @@ Infrastructure: none yet (ADR-002, depends on D1).
 - [Document reviews](docs/reviews/)
 
 ## License
-TBD (PRD.md, OD-006). The repository is public, so until a license is chosen the code is all rights reserved by default.
+MIT. See [LICENSE](LICENSE). The SDKs are published under the same license.

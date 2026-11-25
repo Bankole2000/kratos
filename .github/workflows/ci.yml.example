@@ -1,22 +1,20 @@
-# Rename to ci.yml after replacing the placeholder steps with real commands (the same
-# commands as the README Commands table). Add or remove app jobs to match apps/.
+# Rename to ci.yml in M0 (TASK-010), once the commands below exist. They match the
+# README Commands table; keep the two in sync. Add a job when an SDK or apps/mcp is
+# created.
 #
 # How it works:
-# - "changes" works out which apps a PR touches. A change under packages/ or to
-#   root config runs every app.
-# - Each app job runs only when its app changed (it shows as skipped otherwise).
+# - "changes" works out which parts a PR touches. Shared Rust code (packages/types,
+#   Cargo files) runs api and app; shared JS code (packages/, pnpm files) runs web
+#   and app; the OpenAPI spec runs everything that consumes it.
+# - Each job runs only when its part changed (it shows as skipped otherwise).
 # - "ci-ok" runs last and fails if any job failed or was cancelled. Make "ci-ok"
-#   the ONLY required status check in branch protection: requiring the app jobs
-#   directly would block PRs whose app jobs were skipped.
+#   the ONLY required status check in branch protection: requiring the other jobs
+#   directly would block PRs whose jobs were skipped.
 #
-# Keeping CI fast and affordable with many apps:
-# - This workflow runs on every PR, so keep it to lint, typecheck, unit tests and
-#   quick builds. Run them on ubuntu-latest wherever the toolchain allows: Android,
-#   most cross-platform mobile/desktop code and their unit tests do.
-# - Full native builds, signing, notarization and store uploads belong in
-#   release.yml, which runs only for release tags. macOS runners (needed for iOS and
-#   macOS builds) are billed at a much higher rate, so avoid them here; if iOS needs
-#   a compile check on PRs, run it on a schedule or only when its files change.
+# Keeping CI fast and affordable:
+# - Lint, typecheck, unit and integration tests and quick builds only, on
+#   ubuntu-latest. Signed Tauri builds for Windows, macOS, Android and iOS run only
+#   in release.yml (macOS runners are billed at a much higher rate).
 #
 # Check for newer action major versions, and consider pinning actions to a full
 # commit SHA (especially third-party ones such as dorny/paths-filter).
@@ -43,36 +41,42 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
-      web: ${{ steps.filter.outputs.web }}
       api: ${{ steps.filter.outputs.api }}
-      mobile: ${{ steps.filter.outputs.mobile }}
-      infra: ${{ steps.filter.outputs.infra }}
+      web: ${{ steps.filter.outputs.web }}
+      app: ${{ steps.filter.outputs.app }}
     steps:
       - uses: actions/checkout@v7
       - id: filter
         uses: dorny/paths-filter@v4
         with:
-          # Root files that affect every app: lockfiles, workspace and tool config.
           filters: |
-            shared: &shared
-              - 'packages/**'
+            rust: &rust
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'rust-toolchain.toml'
+              - 'packages/types/**'
+              - '.github/workflows/ci.yml'
+            js: &js
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
-              - 'package-lock.json'
-              - 'turbo.json'
+              - '.nvmrc'
+              - 'packages/ui/**'
+              - 'packages/api-client-ts/**'
+              - 'openapi/**'
               - '.github/workflows/ci.yml'
-            web:
-              - *shared
-              - 'apps/web/**'
             api:
-              - *shared
+              - *rust
               - 'apps/api/**'
-            mobile:
-              - *shared
-              - 'apps/mobile/**'
-            infra:
-              - 'infra/**'
+              - '.sqlx/**'
+              - 'openapi/**'
+            web:
+              - *js
+              - 'apps/web/**'
+            app:
+              - *rust
+              - *js
+              - 'apps/app/**'
 
   placeholders:
     runs-on: ubuntu-latest
@@ -82,6 +86,40 @@ jobs:
       - name: Check for unfilled template placeholders
         run: bash scripts/check-placeholders.sh
 
+  api:
+    needs: changes
+    if: needs.changes.outputs.api == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+      SQLX_OFFLINE: 'true'
+    steps:
+      - uses: actions/checkout@v7
+      # Rust example — adjust once TASK-001 to TASK-004 exist:
+      # - uses: dtolnay/rust-toolchain@stable
+      #   with:
+      #     components: rustfmt, clippy
+      # - uses: Swatinem/rust-cache@v2
+      # - run: cargo fmt --check
+      # - run: cargo clippy -p api -- -D warnings
+      # - run: cargo test -p api
+      # Generated files must be up to date (TESTING.md, contract tests):
+      # - run: cargo install sqlx-cli --no-default-features --features postgres
+      # - run: cargo sqlx prepare --workspace --check
+      # - run: cargo run -p api -- openapi > openapi/openapi.json && git diff --exit-code openapi/
+      - name: Fail until configured
+        run: |
+          echo "Replace with the api's format, lint, test and generated-file checks."
+          exit 1
+
   web:
     needs: changes
     if: needs.changes.outputs.web == 'true' || github.event_name == 'workflow_dispatch'
@@ -89,72 +127,54 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
-      # Node.js example — adjust or replace:
+      # Node.js example — adjust once TASK-006 to TASK-008 exist:
+      # - uses: pnpm/action-setup@v4
       # - uses: actions/setup-node@v7
       #   with:
       #     node-version-file: .nvmrc
       #     cache: pnpm
       # - run: pnpm install --frozen-lockfile
-      # - run: pnpm --filter web lint
-      # - run: pnpm --filter web typecheck
-      # - run: pnpm --filter web test
+      # - run: pnpm --filter api-client-ts generate && git diff --exit-code packages/api-client-ts
+      # - run: pnpm --filter ui --filter web lint
+      # - run: pnpm --filter ui --filter web typecheck
+      # - run: pnpm --filter ui --filter web test
       # - run: pnpm --filter web build
+      # E2E (Playwright against a running api) is added with the first M1 journey.
       - name: Fail until configured
         run: |
-          echo "Replace with the web app's install, lint, test and build commands."
+          echo "Replace with web and packages/ui install, lint, typecheck, test and build commands."
           exit 1
 
-  api:
+  app:
     needs: changes
-    if: needs.changes.outputs.api == 'true' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v7
-      # Python example — adjust or replace:
-      # - uses: actions/setup-python@v7
-      #   with:
-      #     python-version-file: apps/api/.python-version
-      #     cache: pip
-      # - run: pip install -r apps/api/requirements.txt
-      # - run: ruff check apps/api
-      # - run: pytest apps/api
-      - name: Fail until configured
-        run: |
-          echo "Replace with the API's install, lint, test and build commands."
-          exit 1
-
-  mobile:
-    needs: changes
-    if: needs.changes.outputs.mobile == 'true' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest   # Keep on Linux; signed iOS/macOS builds run in release.yml
+    if: needs.changes.outputs.app == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest   # Keep on Linux; signed builds for every platform run in release.yml
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
-      # Lint, typecheck and unit tests only. Desktop apps follow the same pattern.
+      # Tauri example — adjust once TASK-009 exists. Lint, typecheck, unit tests and a
+      # compile check of src-tauri on Linux only:
+      # - run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+      # - uses: dtolnay/rust-toolchain@stable
+      # - uses: Swatinem/rust-cache@v2
+      # - uses: pnpm/action-setup@v4
+      # - uses: actions/setup-node@v7
+      #   with:
+      #     node-version-file: .nvmrc
+      #     cache: pnpm
+      # - run: pnpm install --frozen-lockfile
+      # - run: pnpm --filter app lint
+      # - run: pnpm --filter app typecheck
+      # - run: pnpm --filter app test
+      # - run: cargo clippy --manifest-path apps/app/src-tauri/Cargo.toml -- -D warnings
       - name: Fail until configured
         run: |
-          echo "Replace with the mobile app's install, lint and test commands."
-          exit 1
-
-  infra:
-    needs: changes
-    if: needs.changes.outputs.infra == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v7
-      # Format check, validate and lint the infrastructure code. A plan needs
-      # read-only cloud credentials: use short-lived OIDC credentials limited to
-      # reading state, never long-lived keys, and never run apply here.
-      - name: Fail until configured
-        run: |
-          echo "Replace with the infrastructure validate and plan commands."
+          echo "Replace with the app's install, lint, typecheck, test and src-tauri checks."
           exit 1
 
   ci-ok:
     if: always()
-    needs: [changes, placeholders, web, api, mobile, infra]
+    needs: [changes, placeholders, api, web, app]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

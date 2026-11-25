@@ -1,6 +1,6 @@
 # Product Requirements Document
 
-Status: Draft | Owner: @Bankole2000 | Version: 0.1 | Last updated: 2026-11-25
+Status: Draft | Owner: @Bankole2000 | Version: 0.2 | Last updated: 2026-11-25
 References: platform-core.md (project overview, guiding principles and SDK specification)
 
 ## Vision and problem
@@ -131,7 +131,7 @@ Decisions D1 to D8 are tracked in platform-core.md section 8 (D2 is decided: SQL
 - OD-003: Source for phone codes (ITU-T E.164 assignments or a maintained dataset such as libphonenumber metadata). Owner: @Bankole2000. Needed by: M2.
 - OD-004: Do agent keys get their own prefix (for example, `pc_ak_`) so they are recognizable in logs? Owner: @Bankole2000. Needed by: M1, together with D8.
 - OD-005: Nuxt 3 or Nuxt 4 for `apps/web`, given Nuxt 3's end of maintenance. Owner: @Bankole2000. Needed by: M0.
-- OD-006: License. The repository is public and the SDKs will be published to package registries, which expect a license. Proprietary server with open-source SDKs, or one license for everything? Owner: @Bankole2000. Needed by: M3 (first SDK release).
+- OD-006: License. **Decided (2026-11-25 project setup review): MIT** for the whole repository, SDKs included. See LICENSE.
 
 ## Approval
 TBD: human approver, date and approved revision.
