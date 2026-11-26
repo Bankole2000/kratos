@@ -13,6 +13,7 @@ This file is the list of everything the product lets someone do. It feeds the PR
 5. **Effective priority** is the lower of the feature's priority and its surface's priority (a Must feature on a Should surface is a Should there).
 6. **IDs are stable:** never renumber or reuse them. Mark removed items `out-of-scope` instead of deleting them. `FT-` is used for features because `F1` to `F22` are already the feature areas in platform-core.md.
 7. Only humans approve. Agents add new ideas as `proposed` and never change a status.
+8. **Adding features:** open this file in `tools/doc-reviewer.html` and use "+ Add". "Build from lists" picks the user, action, resource, surfaces and journey from dropdowns ("+ New" adds a list item on the spot); "Describe in words" takes a sentence that an agent turns into a row.
 
 ## Users
 | ID | Name | Kind | Description | Priority |
