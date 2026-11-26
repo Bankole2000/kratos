@@ -4,8 +4,8 @@ about: A scoped, testable development task
 title: "[Task] "
 labels: ""
 ---
-## Task key, requirement and test IDs
-<!-- TASK-___ / FR-___ / TC-___ -->
+## Task key, feature, requirement and test IDs
+<!-- TASK-___ / FT-___ / FR-___ / TC-___ -->
 
 ## App
 <!-- The one app this task changes (web, api, mobile, packages, repo). Work spanning apps is split into one task per app under a parent issue. -->

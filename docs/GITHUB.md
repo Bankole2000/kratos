@@ -1,13 +1,13 @@
 # GitHub Management Specification
 
-Status: Approved | Owner: @Bankole2000 | Version: 1.1 | Last updated: 2026-11-25
+Status: In review | Owner: @Bankole2000 | Version: 1.2 | Last updated: 2026-11-26
 
 ## Configuration
 - Repository: Bankole2000/kratos (public)
-- Project: TBD (GitHub Project owned by @Bankole2000, created during setup)
+- Project: #3 "Kratos" (owned by @Bankole2000), with the fields below
 - Default branch: main
 - Configure branch protection: require PRs, require the `ci-ok` status check only (it summarizes the per-app CI jobs, which are skipped when their app is unchanged), and require review from code owners (`.github/CODEOWNERS`). Use least-privilege credentials. Never store tokens in this file.
-- `bash scripts/setup-github.sh --apps api,web,app` can create the labels, milestones and custom Project fields below. App labels come from `--apps`, or from the folders in `apps/` once they exist.
+- `bash scripts/setup-github.sh --project 3 --milestones` keeps the Project fields and the milestones (with their journeys as descriptions) in step with this document and ROADMAP.md; `--labels --apps api,web,app` does the labels, and `--dry-run` shows what would change. Run it after milestones change in ROADMAP.md.
 
 ## Project fields
 | Field | Values | New issue default |
@@ -76,7 +76,7 @@ One per app in `apps/`, plus labels for shared code, SDKs, infrastructure and re
 - Close duplicates with a reference only when authorized; prefer closing over deletion. Never delete without explicit authorization.
 
 ## Multi-app work
-- A feature that needs changes in more than one app gets a parent issue (the user-facing outcome, linked to FR IDs) with one sub-issue per app. Each sub-issue has a single `app:` label and its own acceptance criteria, and is delivered in its own PR.
+- A feature that needs changes in more than one app gets a parent issue (the user-facing outcome, linked to its FT and FR IDs) with one sub-issue per app. Each sub-issue has a single `app:` label and its own acceptance criteria, and is delivered in its own PR.
 - Order sub-issues with dependencies: infrastructure (`app:infra`) first, then the api (`app:api`, which regenerates the contract in `openapi/`), then shared packages (`app:packages`), then SDKs (`app:sdks`) and clients (`app:web`, `app:app`). Clients may merge behind a feature flag before the api change is released.
 - The parent issue is Done when all sub-issues are Done and the end-to-end acceptance test passes.
 
@@ -84,7 +84,7 @@ One per app in `apps/`, plus labels for shared code, SDKs, infrastructure and re
 Todo + Approved + AI Ready Yes + completed dependencies → In Progress → In Review → Done (after approved merge). Early start (AGENTS.md, Execution rules 2): a task whose dependency is an open PR may go In Progress for the parts that don't need it; its PR stays a draft until the dependency is Done. Blocked can interrupt any active stage; return to Todo or In Progress as appropriate after resolution. Changes Requested returns the issue to In Progress (see AGENTS.md). Re-review material changes.
 
 ## Definition of ready
-Clear objective, requirement IDs, linked acceptance tests (TC IDs), bounded scope, testable acceptance criteria, known dependencies and resolved decisions.
+Clear objective, approved feature IDs (FEATURES.md) and requirement IDs, linked acceptance tests (TC IDs), bounded scope, testable acceptance criteria, known dependencies and resolved decisions.
 
 ## PR rules
 Use the template, link the issue, report actual validation, identify risks. Use closing keywords only when the PR fully resolves the issue and targets the default branch. A human approves the merge; verify issue closure and Project Done afterward.
@@ -93,4 +93,4 @@ Use the template, link the issue, report actual validation, identify risks. Use 
 Confirm actual field names/options and IDs, milestone names, labels, permissions, branch rules and automation behavior before agents write. Project fields may require separate API permissions (`gh auth refresh -s project`). This document is a specification, not live GitHub configuration.
 
 ## Approval
-Approved by @Bankole2000 on 2026-11-25, revision 1.0, to start building. Approved as drafted without an item-by-item review; sections are revisited when the milestone that needs them is planned, and open TBDs stay open decisions.
+Approved by @Bankole2000 on 2026-11-25, revision 1.0, to start building. Approved as drafted without an item-by-item review; sections are revisited when the milestone that needs them is planned, and open TBDs stay open decisions. Revision 1.2 records Project #3, feature IDs in the definition of ready and parent issues, and the setup script's current usage; it is in review.
