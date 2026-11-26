@@ -58,7 +58,7 @@ function select(item: NavItem) {
           size="small"
           @click="select(item)"
         >
-          <span class="platform-shell__label">{{ item.title }}</span>
+          <span class="platform-shell__label platform-shell__label--rail">{{ item.title }}</span>
         </v-btn>
       </div>
     </v-navigation-drawer>
@@ -100,6 +100,7 @@ function select(item: NavItem) {
 
 .platform-shell__rail-item {
   min-height: 56px;
+  padding-inline: 4px;
 }
 
 /* Bottom bar buttons share the width evenly and may shrink; labels wrap instead of overflowing. */
@@ -114,5 +115,12 @@ function select(item: NavItem) {
   white-space: normal;
   text-align: center;
   overflow-wrap: anywhere;
+}
+
+/* The rail is wide enough for every default word, so its labels wrap only between words
+   ("Reference / data"), never inside one (#36). */
+.platform-shell__label--rail {
+  overflow-wrap: normal;
+  word-break: normal;
 }
 </style>

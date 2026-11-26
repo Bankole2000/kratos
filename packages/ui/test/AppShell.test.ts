@@ -7,6 +7,7 @@
 import { afterEach, describe, expect, test } from 'vitest'
 import { nextTick } from 'vue'
 import { AppShell, defaultNavItems, narrowBreakpoint } from '../src/index.ts'
+import { railWidth } from '../src/theme.ts'
 import { mountWithUi, setViewportWidth } from './helpers.ts'
 
 let unmount: (() => void) | undefined
@@ -101,5 +102,21 @@ describe('AppShell', () => {
       .findAll('button')
       .map((b) => b.text())
     expect(texts).toEqual(['Portfolio', 'Extra'])
+  })
+
+  // #36: the rail labels broke mid-word ("Portfoli/o"). happy-dom can't measure text, so this
+  // checks the rules that decide it: rail labels wrap only between words, and the rail leaves
+  // room for the longest default word ("Reference", about 60 px at 12 px).
+  test('rail labels wrap only between words and the rail leaves room for them', () => {
+    const wrapper = mountShell(1024)
+    for (const label of wrapper.get(rail).findAll('.platform-shell__label')) {
+      const style = getComputedStyle(label.element)
+      expect(style.overflowWrap).toBe('normal')
+      expect(style.wordBreak).toBe('normal')
+    }
+    const button = wrapper.get(rail).get('button').element
+    const padding = parseFloat(getComputedStyle(button).getPropertyValue('padding-inline'))
+    // Rail width minus the list's 8 px padding on each side and the button's own padding.
+    expect(railWidth - 16 - 2 * padding).toBeGreaterThanOrEqual(72)
   })
 })

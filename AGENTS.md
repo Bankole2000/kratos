@@ -102,5 +102,10 @@ Validation
 - Never log a full key, token, password or event properties; log keys by prefix only. Every write records its actor in the audit trail.
 - Key and token creation, revocation and admin credential changes go through the admin session only, never through a key, a token or the MCP server.
 
+## Working with the owner
+Agreed with the owner on 2026-11-26; applies to every agent, including subagents, until the owner changes it here.
+- **No browser or visual checks by agents.** Don't drive browsers (headless or not), take screenshots or window captures, or start dev servers only to look at a page. Finish the automated checks (tests, lint, typecheck, build), then tell the owner what to check and where. The owner checks in their own browser or app and reports back while you continue with fixes.
+- **Offer slow or interactive commands to the owner.** For commands such as starting a server, setting up a project or installing packages, give the exact command and offer to let the owner run it themselves (in Claude Code, with the `!` prefix) when that would be faster.
+
 ## Completion
 Acceptance criteria satisfied, checks reported, documentation and the affected apps' `CHANGELOG.md` (Unreleased) updated where user-visible, focused PR created. Human review and merge are required for Done. Follow docs/GITHUB.md for state transitions.

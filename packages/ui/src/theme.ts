@@ -40,5 +40,8 @@ export const darkTheme: ThemeDefinition = {
  */
 export const narrowBreakpoint = 600
 
-/** Width of the side navigation rail in px. */
-export const railWidth = 88
+/**
+ * Width of the side navigation rail in px. It leaves 72 px for each label, enough for the
+ * longest default word ("Reference") at the 12 px label size, so words never break (#36).
+ */
+export const railWidth = 96

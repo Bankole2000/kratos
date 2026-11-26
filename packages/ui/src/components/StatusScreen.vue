@@ -1,7 +1,9 @@
 <script setup lang="ts">
 // Calls GET /health through the injected api client and shows the result. The request runs in
 // onMounted, which never runs during a server render, so Nuxt renders the loading state and
-// the browser fetches.
+// the browser fetches. The spinner also renders only after mount: Vuetify styles it from the
+// browser's reduced-motion setting, which a server render cannot know, so rendering it on the
+// server would make the two renders differ (a hydration mismatch).
 import { computed, onMounted, shallowRef } from 'vue'
 import { mdiAlertOutline, mdiCheckCircleOutline, mdiCloudOffOutline, mdiRefresh } from '@mdi/js'
 import { useApiClient } from '../client.ts'
@@ -9,13 +11,17 @@ import { loadHealth, type HealthState } from '../health.ts'
 
 const client = useApiClient()
 const state = shallowRef<HealthState>({ kind: 'loading' })
+const mounted = shallowRef(false)
 
 async function check() {
   state.value = { kind: 'loading' }
   state.value = await loadHealth(client)
 }
 
-onMounted(check)
+onMounted(() => {
+  mounted.value = true
+  void check()
+})
 
 const view = computed(() => {
   const s = state.value
@@ -37,12 +43,10 @@ const view = computed(() => {
     <v-card :data-state="state.kind" data-testid="status-screen" variant="flat" border>
       <v-card-item>
         <template #prepend>
-          <v-progress-circular
-            v-if="state.kind === 'loading'"
-            indeterminate
-            size="32"
-            aria-label="Loading"
-          />
+          <template v-if="state.kind === 'loading'">
+            <v-progress-circular v-if="mounted" indeterminate size="32" aria-label="Loading" />
+            <span v-else class="platform-status__spinner-slot" aria-hidden="true" />
+          </template>
           <v-icon v-else :icon="view.icon ?? undefined" :color="view.color" size="32" />
         </template>
         <v-card-title role="status" aria-live="polite" class="text-wrap">
@@ -83,3 +87,12 @@ const view = computed(() => {
     </v-card>
   </v-container>
 </template>
+
+<style scoped>
+/* Holds the spinner's place until mount, so the card doesn't shift when it appears. */
+.platform-status__spinner-slot {
+  display: inline-block;
+  width: 32px;
+  height: 32px;
+}
+</style>

@@ -7,4 +7,6 @@ All notable changes to this app are recorded here. Format based on [Keep a Chang
 - Nuxt 4 (SSR) shell with Vuetify 4 that shows the shared layout shell and api status screen from `packages/ui`; the api base URL comes from `NUXT_PUBLIC_API_BASE_URL` (TASK-008).
 ### Changed
 ### Fixed
+- The status screen no longer causes a hydration mismatch warning when the browser prefers reduced motion (#37).
+- Side rail labels wrap only between words, never mid-word (#36).
 ### Removed

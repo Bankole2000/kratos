@@ -27,7 +27,7 @@ Import only from `'ui'` (`src/index.ts`), never from files inside the package.
 - Theme tokens (colours now; spacing and typography when they are decided) live in `src/theme.ts`. Components use theme colours (`color="primary"`, `bg-surface`), never hard-coded colours.
 - Icons come from `@mdi/js` and are passed as SVG paths (`:icon="mdiKeyVariant"`); never add an icon font.
 - Accessibility (DESIGN.md): every action is reachable by keyboard, navigation marks the current item with `aria-current`, icon-only controls have an `aria-label`, and status changes are announced (`role="status"`).
-- happy-dom does no layout, so tests cannot measure overflow. Test the breakpoint logic and the styles that prevent overflow, and check real layouts in a browser at 360 px.
+- happy-dom does no layout, so tests cannot measure overflow. Test the breakpoint logic and the styles that prevent overflow, and ask the owner to check real layouts in a browser at 360 px (agents don't run browser checks; see "Working with the owner" in the root AGENTS.md).
 
 ## Commands
 Run from the repo root: `pnpm --filter ui typecheck` (vue-tsc), `pnpm --filter ui test` (Vitest). No package linter yet; Prettier runs from the root (`pnpm lint`).
