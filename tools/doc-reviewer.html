@@ -194,6 +194,24 @@ mark.tbd{background:var(--d2-bg);color:var(--d2);border-radius:4px;padding:0 3px
 /* Add panel */
 #add-panel{position:fixed;top:0;right:0;bottom:0;width:360px;background:var(--surface);border-left:1px solid var(--border);box-shadow:-4px 0 20px rgba(0,0,0,.12);z-index:100;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s ease}
 #add-panel.open{transform:translateX(0)}
+#add-panel.wide{width:460px}
+.mode-switch{display:flex;gap:4px;border:1px solid var(--border);border-radius:var(--radius);padding:3px}
+.mode-switch button{flex:1;border:none;background:transparent;padding:7px;font-size:12px;border-radius:4px;cursor:pointer;color:var(--fg-muted);font-family:var(--font)}
+.mode-switch button.on{background:var(--accent-bg);color:var(--accent);font-weight:500}
+#feature-builder{display:flex;flex-direction:column;gap:12px}
+#feature-builder[hidden],#generic-add[hidden]{display:none}
+#generic-add{display:flex;flex-direction:column;gap:14px}
+.fb-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fb-field .cat-row .field-select{flex:1}
+.fb-new{display:flex;flex-direction:column;gap:6px;margin-top:6px;padding:10px;border:1px dashed var(--border-strong);border-radius:var(--radius)}
+.fb-new-actions{display:flex;gap:6px;justify-content:flex-end}
+.fb-new-actions button{padding:6px 12px;font-size:12px;border-radius:var(--radius);border:1px solid var(--border-strong);background:var(--surface);color:var(--fg);cursor:pointer}
+.fb-new-actions .fb-save{background:var(--accent);border-color:var(--accent);color:#fff}
+.fb-preview{font-size:13px;line-height:1.5;padding:10px 12px;border-radius:var(--radius);background:var(--accent-bg);color:var(--fg)}
+.fb-preview .fb-id{font-weight:600;color:var(--accent);margin-right:6px}
+.fb-error{color:var(--d1);font-size:12px}
+.fb-hint{color:var(--fg-faint);font-size:11px;margin-top:3px}
+select.field-select[multiple]{min-height:110px;padding:4px}
 .add-panel-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
 .add-panel-header h2{font-size:14px;font-weight:600;margin:0;flex:1}
 .btn-close-panel{background:none;border:none;color:var(--fg-faint);font-size:20px;cursor:pointer;padding:0;line-height:1}
@@ -350,6 +368,12 @@ mark.tbd{background:var(--d2-bg);color:var(--d2);border-radius:4px;padding:0 3px
     <button class="btn-close-panel" id="close-add-panel" aria-label="Close">×</button>
   </div>
   <div class="add-panel-body">
+    <div class="mode-switch" id="add-mode" role="tablist" aria-label="How to add" hidden>
+      <button type="button" role="tab" data-mode="build" class="on">Build from lists</button>
+      <button type="button" role="tab" data-mode="describe">Describe in words</button>
+    </div>
+    <div id="feature-builder" hidden></div>
+    <div id="generic-add">
     <div>
       <div class="field-label">Section</div>
       <div class="cat-row">
@@ -367,6 +391,7 @@ mark.tbd{background:var(--d2-bg);color:var(--d2);border-radius:4px;padding:0 3px
     <div>
       <div class="field-label">Details (optional)</div>
       <textarea class="field-textarea" id="add-item-details" rows="3" placeholder="Acceptance criteria, context, links…"></textarea>
+    </div>
     </div>
   </div>
   <div id="added-items-section" hidden>
@@ -424,6 +449,9 @@ const DOC_TYPES = {
   agents:{label:'Agent Rules',icon:'🤖',color:'#6366f1',colorBg:'#eef2ff',
     decisions:[{key:'d0',name:'Accept',label:'✓ Accept',cls:'btn-d0'},{key:'d1',name:'Flag',label:'⚑ Flag',cls:'btn-d1',expandNote:'Concern about this rule'},{key:'d2',name:'Modify',label:'✎ Modify Rule',cls:'btn-d2',expandNote:'Modified rule text'}],
     addLabel:'New rule'},
+  features:{label:'Features',icon:'🧩',color:'#0d9488',colorBg:'#f0fdfa',
+    decisions:[{key:'d0',name:'Approve',label:'✓ Approve',cls:'btn-d0'},{key:'d1',name:'Defer',label:'↓ Defer',cls:'btn-d1',expandNote:'Reason for deferral'},{key:'d2',name:'Modify',label:'✎ Modify',cls:'btn-d2',expandNote:'Change to make',expandExtra:'Additional notes'}],
+    addLabel:'New feature'},
   general:{label:'Document',icon:'📄',color:'#6b6860',colorBg:'#f0eeeb',
     decisions:[{key:'d0',name:'Accept',label:'✓ Accept',cls:'btn-d0'},{key:'d1',name:'Reject',label:'✕ Reject',cls:'btn-d1',expandNote:'Reason'},{key:'d2',name:'Modify',label:'✎ Modify',cls:'btn-d2',expandNote:'Notes / changes'}],
     addLabel:'New item'}
@@ -433,7 +461,7 @@ const VERDICTS = ['Approved','Approved with changes','Changes requested','Reject
 const KIND_LABELS = {row:'ROW',list:'ITEM',check:'CHECK',text:'TEXT',heading:'HEADING',meta:'HEADER'};
 
 // Known template files, in suggested review order.
-const FILE_TYPES = {'readme.md':'general','prd.md':'prd','design.md':'design','technical.md':'technical','testing.md':'testing','deployment.md':'deployment','roadmap.md':'roadmap','github.md':'github','agents.md':'agents'};
+const FILE_TYPES = {'readme.md':'general','features.md':'features','prd.md':'prd','design.md':'design','technical.md':'technical','testing.md':'testing','deployment.md':'deployment','roadmap.md':'roadmap','github.md':'github','agents.md':'agents'};
 const FILE_ORDER = Object.keys(FILE_TYPES);
 
 function detectDocType(path, h1) {
@@ -498,7 +526,7 @@ function truncate(s, n) { s = s.replace(/\s+/g, ' ').trim(); return s.length > n
 function parseDoc(text) {
   const lines = String(text).replace(/\r\n?/g, '\n').split('\n');
   const items = [], sections = [], meta = {};
-  let h1 = '', h2 = '', h3 = '', para = null, inFence = false;
+  let h1 = '', h2 = '', h3 = '', para = null, inFence = false, generated = '';
   const section = () => [h2, h3].filter(Boolean).join(' › ') || (h1 ? 'Introduction' : '');
   const push = it => { it.section = section(); items.push(it); };
   const flushPara = () => {
@@ -511,6 +539,10 @@ function parseDoc(text) {
 
   for (let i = 0; i < lines.length; i++) {
     const l = lines[i];
+    // Generated blocks (e.g. FEATURES.md's coverage matrix) are rewritten by a script, not reviewed.
+    const gm = /^\s*<!--\s*([\w-]+):(start|end)\s*-->\s*$/.exec(l);
+    if (gm) { flushPara(); generated = gm[2] === 'start' ? gm[1] : ''; continue; }
+    if (generated) continue;
     if (/^\s*(```|~~~)/.test(l)) { addPara(l, i); inFence = !inFence; continue; }
     if (inFence) { addPara(l, i); continue; }
 
@@ -586,7 +618,7 @@ function parseDoc(text) {
     } else if (it.kind === 'list' || it.kind === 'check') {
       const m = ID_RE.exec(it.lead.trim());
       id = m ? m[1] : '';
-      title = id ? it.lead.trim().slice(m[0].length).replace(/^\s*(\([^)]*\))?\s*[:—–-]?\s*/, '') : it.lead;
+      title = id ? it.lead.trim().slice(m[0].length).replace(/^\s*(\*\*|`)?\s*(\([^)]*\))?\s*[:—–-]?\s*(\*\*|`)?\s*/, '') : it.lead;
       if (!title) title = it.lead;
       delete it.lead;
     } else {
@@ -813,7 +845,29 @@ function normalizeReview(md) {
     .replace(/^Resolution: .*$/gm, 'Resolution:')
     .replace(/\s+/g, ' ').trim();
 }
-function sameReview(a, b) { return normalizeReview(a) === normalizeReview(b); }
+// What a document review asks the agent to do: its verdict and its requests (and, for
+// FEATURES.md, which items were accepted, since accepting a feature approves it). Line
+// numbers, dates, coverage counts and document versions don't count as a change.
+function reviewRequests(md) {
+  md = String(md).replace(/\r\n?/g, '\n') + '\n## ';
+  if (!/^# Review: /.test(md)) return null;
+  const verdict = (/^- Verdict: (.*)$/m.exec(md) || [])[1] || '';
+  const heads = ['Action required', 'Added items', 'Placeholder values'];
+  if (/^> Features: /m.test(md)) heads.push('Accepted');
+  const parts = heads.map(h => {
+    const m = new RegExp('^## ' + h + ' \\(\\d+\\)\n([\\s\\S]*?)(?=^## )', 'm').exec(md);
+    return h + ':' + (m ? m[1] : '');
+  });
+  return [verdict].concat(parts).join('\n')
+    .replace(/^Resolution: .*$/gm, '')
+    .replace(/ · Line \d+| \(line \d+\)|^\d+ of these were accepted in bulk.*$/gm, '')
+    .replace(/\s+/g, ' ').trim();
+}
+function sameReview(a, b) {
+  const ra = reviewRequests(a), rb = reviewRequests(b);
+  if (ra !== null && rb !== null) return ra === rb;
+  return normalizeReview(a) === normalizeReview(b);
+}
 
 // The newest existing review file for a document, from the file names in
 // docs/reviews (YYYY-MM-DD-<name>.md, then -2, -3 … on the same day).
@@ -864,6 +918,7 @@ function buildReviewMarkdown(doc, state, opts) {
   L.push('- Coverage: ' + decided.length + ' of ' + doc.items.length + ' items decided; ' + action.length + ' need action; ' + added.length + ' added; ' + filled.length + ' with placeholder values');
   L.push('- Review status: Open', '');
   L.push('> For agents: apply every entry under "Action required", "Added items" and "Placeholder values" to `' + doc.path + '`, then replace each "Resolution: pending" with what you did (or why not). Set "Review status" to Applied when all entries are resolved, or Partially applied otherwise. Leave accepted items unchanged. Line numbers refer to the document as reviewed; find items by ID or text if it has changed. Follow AGENTS.md "Applying doc reviews".', '');
+  if (doc.docType === 'features') L.push('> Features: set Status to `approved` for every `proposed` feature under "Accepted" (other statuses stay as they are), and to `deferred` for every "Defer". Add rows built from the lists exactly as given; write features described in words as rows with status `proposed`.', '');
 
   L.push('## Action required (' + action.length + ')', '');
   if (!action.length) L.push('None.', '');
@@ -880,10 +935,16 @@ function buildReviewMarkdown(doc, state, opts) {
 
   L.push('## Added items (' + added.length + ')', '');
   if (!added.length) L.push('None.', '');
-  for (const a of added) {
-    L.push('### ' + truncate(a.title, 80), '');
+  // List items first: added features may refer to them.
+  const addedOrder = added.filter(a => a.struct && a.struct.type === 'list').concat(added.filter(a => !(a.struct && a.struct.type === 'list')));
+  for (const a of addedOrder) {
+    L.push('### ' + (a.struct ? a.struct.pid + ' · ' : '') + truncate(a.title, 80), '');
     L.push('Add to section: ' + (a.section || '(choose an appropriate section)'), '');
-    L.push(a.title.trim(), '');
+    if (a.struct) L.push(...structuredAddedLines(a));
+    else {
+      L.push(a.title.trim(), '');
+      if (a.described) L.push('_Described in words. Write it as a feature row with status `proposed`, using the existing users, actions, resources and surfaces where they fit; add a list item only where none fits, and say so in the resolution._', '');
+    }
     if (a.details) L.push('**Details:** ' + a.details.trim(), '');
     L.push('Resolution: pending', '');
   }
@@ -922,6 +983,127 @@ function buildReviewMarkdown(doc, state, opts) {
   if (!notReviewed.length) L.push('None.', '');
   for (const it of notReviewed) L.push('- ' + ref(it) + (it.id ? ' — ' + it.title : '') + ' (line ' + it.line + ')');
   return L.join('\n').replace(/\n{3,}/g, '\n\n').trim() + '\n';
+}
+
+// ── Features (docs/FEATURES.md) ─────────────────────────
+// A feature is user + action + resource (+ scope) on surfaces, built from the lists below.
+// Each list is a table under its own heading; `label` is the column shown in dropdowns.
+const FEATURE_LISTS = [
+  { key: 'users', heading: 'Users', prefix: 'U', noun: 'user', label: 'Name', cols: [
+    { name: 'Name', required: true },
+    { name: 'Kind', options: ['person', 'app', 'agent', 'system'] },
+    { name: 'Description' },
+    { name: 'Priority', options: ['Must', 'Should', 'Could', 'Deferred'] }] },
+  { key: 'actions', heading: 'Actions', prefix: 'A', noun: 'action', label: 'Verb', cols: [
+    { name: 'Verb', required: true, hint: 'e.g. approves' },
+    { name: 'Meaning' },
+    { name: 'Writes data', options: ['yes', 'no'] }] },
+  { key: 'resources', heading: 'Resources', prefix: 'R', noun: 'resource', label: 'Name', cols: [
+    { name: 'Name', required: true },
+    { name: 'Kind', options: ['stored', 'derived'] },
+    { name: 'Belongs to', hint: 'e.g. R-01, or —' },
+    { name: 'Description' }] },
+  { key: 'surfaces', heading: 'Surfaces', prefix: 'S', noun: 'surface', label: 'Name', cols: [
+    { name: 'Name', required: true },
+    { name: 'App or package', hint: 'e.g. apps/web' },
+    { name: 'Description' },
+    { name: 'Priority', options: ['Must', 'Should', 'Could', 'Deferred'] }] },
+  { key: 'journeys', heading: 'Journeys', prefix: 'J', noun: 'journey', label: 'Name', cols: [
+    { name: 'Name', required: true },
+    { name: 'Main user', list: 'users' },
+    { name: 'Goal' },
+    { name: 'Features, in order', auto: true },
+    { name: 'Milestone', hint: 'e.g. M1' }] }
+];
+const FEATURE_PRIORITIES = ['Must', 'Should', 'Could', "Won't"];
+const FEATURE_STATUSES = ['approved', 'proposed', 'deferred', 'out-of-scope'];
+const FEATURE_ID_RE = /\b(?:U|A|R|S|J|FT)-\d+\b/g;
+
+function isFeaturesDoc(doc) { return doc && doc.docType === 'features'; }
+
+// The rows of the table under "## <heading>", as objects keyed by column name.
+function tableUnder(text, heading) {
+  const lines = String(text).split(/\r?\n/);
+  const start = lines.findIndex(l => l.trim() === '## ' + heading);
+  if (start < 0) return [];
+  const rows = []; let headers = null;
+  for (let i = start + 1; i < lines.length && !/^##\s/.test(lines[i]); i++) {
+    const l = lines[i].trim();
+    if (!l.startsWith('|')) { if (headers && rows.length) break; continue; }
+    if (isTableSeparator(l)) continue;
+    const cells = splitCells(l);
+    if (!headers) { headers = cells; continue; }
+    rows.push(Object.fromEntries(headers.map((h, j) => [h, cells[j] !== undefined ? cells[j] : ''])));
+  }
+  return rows;
+}
+
+// Every list and the features of a FEATURES.md, plus what the reviewer added this session.
+function featureModel(text, added) {
+  const m = { features: tableUnder(text, 'Features').filter(r => /^FT-\d+$/.test(r.ID)) };
+  for (const cfg of FEATURE_LISTS) m[cfg.key] = tableUnder(text, cfg.heading).filter(r => new RegExp('^' + cfg.prefix + '-\\d+$').test(r.ID));
+  for (const a of added || []) {
+    if (!a.struct) continue;
+    if (a.struct.type === 'list') m[a.struct.list].push(Object.assign({ ID: a.struct.pid, pending: true }, a.struct.values));
+    if (a.struct.type === 'feature') m.features.push(Object.assign({ ID: a.struct.pid, pending: true }, a.struct.values));
+  }
+  return m;
+}
+
+// Next free ID with the given prefix, keeping the digit count already in use (U-01, FT-001).
+function nextFeatureId(prefix, rows) {
+  let max = 0, width = prefix === 'FT' ? 3 : 2;
+  for (const r of rows) {
+    const mt = new RegExp('^' + prefix + '-(\\d+)$').exec(r.ID || '');
+    if (mt) { max = Math.max(max, Number(mt[1])); width = Math.max(width, mt[1].length); }
+  }
+  return prefix + '-' + String(max + 1).padStart(width, '0');
+}
+
+function listLabel(model, key, id) {
+  const cfg = FEATURE_LISTS.find(c => c.key === key);
+  const r = (model[key] || []).find(x => x.ID === id);
+  return r ? r[cfg.label] : id;
+}
+
+// "U-01 Admin": the ID with its name, as feature rows write references.
+function listRef(model, key, id) { return id ? id + ' ' + listLabel(model, key, id) : '—'; }
+
+function mdCell(v) { v = String(v == null ? '' : v).replace(/\|/g, '\\|').replace(/\s*\n\s*/g, ' ').trim(); return v || '—'; }
+
+function listRow(cfg, id, values) {
+  return '| ' + [id].concat(cfg.cols.map(c => values[c.name])).map(mdCell).join(' | ') + ' |';
+}
+
+// f: { user, action, resource, scope, surfaces[], outcome, priority, dependsOn[], journey, status }
+function featureRow(model, id, f) {
+  return '| ' + [
+    id, listRef(model, 'users', f.user), listRef(model, 'actions', f.action), listRef(model, 'resources', f.resource),
+    f.scope, (f.surfaces || []).join(', '), f.outcome, f.priority, (f.dependsOn || []).join(', '),
+    f.journey, '— (new)', f.status
+  ].map(mdCell).join(' | ') + ' |';
+}
+
+// "Admin edits Cost (own project) on Web dashboard, Desktop app"
+function featureSentence(model, f) {
+  const parts = [listLabel(model, 'users', f.user), listLabel(model, 'actions', f.action), listLabel(model, 'resources', f.resource)].filter(Boolean);
+  let s = parts.join(' ');
+  if (f.scope) s += ' (' + f.scope + ')';
+  if ((f.surfaces || []).length) s += ' on ' + f.surfaces.map(id => listLabel(model, 'surfaces', id)).join(', ');
+  return s;
+}
+
+// The rows a FEATURES.md review asks the agent to add, for one added item.
+function structuredAddedLines(a) {
+  const s = a.struct, L = [];
+  if (s.type === 'feature') {
+    L.push('Add this row to the Features table exactly as given (the reviewer built it from the lists):', '', fenceBlock(s.row), '');
+    if (s.values.journey) L.push('Also add ' + s.pid + ' to the "Features, in order" cell of ' + s.values.journey + '.', '');
+  } else {
+    L.push('Add this row to the ' + FEATURE_LISTS.find(c => c.key === s.list).heading + ' table exactly as given:', '', fenceBlock(s.row), '');
+  }
+  L.push('If ' + s.pid + ' is already taken, use the next free ID and update every reference to it in this review.', '');
+  return L;
 }
 
 // Builds the project setup review: the facts plus every file they must be applied to.
@@ -1676,9 +1858,211 @@ function openAddPanel() {
   if (curSec && sections.includes(curSec)) sel.value = curSec;
   $('add-item-text').value = ''; $('add-item-details').value = '';
   $('new-section-row').hidden = true; $('new-section-input').value = '';
+  const features = isFeaturesDoc(doc);
+  $('add-mode').hidden = !features;
+  $('add-panel').classList.toggle('wide', features);
+  if (features) {
+    if (sections.includes('Features')) sel.value = 'Features';
+    fb.values = newFeatureValues(); fb.newFor = null; fb.error = '';
+    setAddMode(fb.mode);
+  } else {
+    $('feature-builder').hidden = true; $('generic-add').hidden = false;
+    $('add-submit-btn').textContent = '+ Add item';
+  }
   renderAddedList();
   $('add-panel').classList.add('open'); $('add-overlay').classList.add('open');
-  setTimeout(() => $('add-item-text').focus(), 80);
+  if (!features || fb.mode === 'describe') setTimeout(() => $('add-item-text').focus(), 80);
+}
+
+// ── Feature builder (FEATURES.md only) ──────────────────
+const fb = { mode: 'build', values: null, newFor: null, newValues: {}, error: '' };
+
+function newFeatureValues() {
+  return { user: '', action: '', resource: '', scope: '', surfaces: [], outcome: '', priority: 'Must', dependsOn: [], journey: '', status: 'approved' };
+}
+
+function setAddMode(mode) {
+  fb.mode = mode;
+  $('add-mode').querySelectorAll('button').forEach(b => { const on = b.dataset.mode === mode; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
+  const build = mode === 'build';
+  $('feature-builder').hidden = !build; $('generic-add').hidden = build;
+  $('add-submit-btn').textContent = build ? '+ Add feature' : '+ Add described feature';
+  $('add-item-label').textContent = build ? 'New feature' : 'Describe the feature (who does what, where, and what they see when it works)';
+  if (build) renderFeatureBuilder(); else setTimeout(() => $('add-item-text').focus(), 50);
+}
+$('add-mode').querySelectorAll('button').forEach(b => b.addEventListener('click', () => setAddMode(b.dataset.mode)));
+
+function currentFeatureModel() { const doc = docs[currentDocIdx]; return featureModel(doc.text, doc.state.added); }
+
+function optionList(sel, rows, labelOf, value, blank) {
+  sel.innerHTML = '';
+  if (blank !== undefined) { const o = el('option', { value: '' }); o.textContent = blank; sel.appendChild(o); }
+  rows.forEach(r => { const o = el('option', { value: r.ID }); o.textContent = r.ID + ' ' + labelOf(r) + (r.pending ? ' (new)' : ''); sel.appendChild(o); });
+  sel.value = value || '';
+}
+
+// A dropdown for one list, with "+ New" opening an inline form that adds a list item.
+function listPicker(model, key, field, label, opts) {
+  const cfg = FEATURE_LISTS.find(c => c.key === key);
+  const wrap = el('div', { class: 'fb-field' });
+  const lab = el('label', { class: 'field-label', for: 'fb-' + field }); lab.textContent = label; wrap.appendChild(lab);
+  const row = el('div', { class: 'cat-row' });
+  const sel = el('select', { class: 'field-select', id: 'fb-' + field });
+  optionList(sel, model[key], r => r[cfg.label], fb.values[field], opts && opts.blank !== undefined ? opts.blank : 'Choose a ' + cfg.noun + '…');
+  sel.addEventListener('change', () => { fb.values[field] = sel.value; updateFeaturePreview(); });
+  row.appendChild(sel);
+  const nb = el('button', { type: 'button', class: 'btn-new-cat' }); nb.textContent = '+ New';
+  nb.addEventListener('click', () => { fb.newFor = fb.newFor && fb.newFor.field === field ? null : { key, field }; fb.newValues = {}; renderFeatureBuilder(); });
+  row.appendChild(nb); wrap.appendChild(row);
+  if (fb.newFor && fb.newFor.field === field) wrap.appendChild(newListItemForm(model, cfg));
+  return wrap;
+}
+
+function newListItemForm(model, cfg) {
+  const box = el('div', { class: 'fb-new' });
+  const id = nextFeatureId(cfg.prefix, model[cfg.key]);
+  const h = el('div', { class: 'field-label' }); h.textContent = 'New ' + cfg.noun + ' ' + id; box.appendChild(h);
+  let first = null;
+  cfg.cols.filter(c => !c.auto).forEach(c => {
+    let input;
+    if (c.options || c.list) {
+      input = el('select', { class: 'field-select', 'aria-label': c.name });
+      if (c.list) optionList(input, model[c.list], r => r.Name, fb.newValues[c.name], c.name + '…');
+      else { c.options.forEach(v => { const o = el('option', { value: v }); o.textContent = v; input.appendChild(o); }); input.value = fb.newValues[c.name] || c.options[0]; }
+      fb.newValues[c.name] = input.value;
+      input.addEventListener('change', () => { fb.newValues[c.name] = input.value; });
+    } else {
+      input = el('input', { class: 'field-input', 'aria-label': c.name, placeholder: c.name + (c.required ? '' : ' (optional)') + (c.hint ? ' — ' + c.hint : '') });
+      input.value = fb.newValues[c.name] || '';
+      input.addEventListener('input', () => { fb.newValues[c.name] = input.value; });
+    }
+    if (!first) first = input;
+    box.appendChild(input);
+  });
+  const err = el('div', { class: 'fb-error' }); box.appendChild(err);
+  const actions = el('div', { class: 'fb-new-actions' });
+  const cancel = el('button', { type: 'button' }); cancel.textContent = 'Cancel';
+  cancel.addEventListener('click', () => { fb.newFor = null; renderFeatureBuilder(); });
+  const save = el('button', { type: 'button', class: 'fb-save' }); save.textContent = 'Add ' + cfg.noun;
+  save.addEventListener('click', () => {
+    const missing = cfg.cols.filter(c => c.required && !String(fb.newValues[c.name] || '').trim());
+    if (missing.length) { err.textContent = missing.map(c => c.name).join(', ') + ' is required.'; return; }
+    const values = {};
+    cfg.cols.forEach(c => { values[c.name] = c.list ? listRefFor(model, c.list, fb.newValues[c.name]) : String(fb.newValues[c.name] || '').trim(); });
+    const doc = docs[currentDocIdx];
+    doc.state.added.push({ id: Date.now(), section: cfg.heading, title: 'New ' + cfg.noun + ': ' + values[cfg.label],
+      struct: { type: 'list', list: cfg.key, pid: id, values, row: listRow(cfg, id, values) } });
+    saveState(doc);
+    if (cfg.key === 'surfaces') fb.values.surfaces = fb.values.surfaces.concat(id);
+    else fb.values[fb.newFor.field] = id;
+    fb.newFor = null;
+    renderAddedList(); rebuildAddedSidebar(); renderFeatureBuilder();
+  });
+  actions.appendChild(cancel); actions.appendChild(save); box.appendChild(actions);
+  setTimeout(() => first && first.focus(), 30);
+  return box;
+}
+
+function listRefFor(model, key, id) { return id ? listRef(model, key, id) : ''; }
+
+function renderFeatureBuilder() {
+  const box = $('feature-builder'); box.innerHTML = '';
+  const model = currentFeatureModel(), v = fb.values;
+  const has = (key, id) => model[key].some(r => r.ID === id);
+  [['user', 'users'], ['action', 'actions'], ['resource', 'resources'], ['journey', 'journeys']].forEach(([f, k]) => { if (v[f] && !has(k, v[f])) v[f] = ''; });
+  v.surfaces = v.surfaces.filter(id => has('surfaces', id));
+  v.dependsOn = v.dependsOn.filter(id => has('features', id));
+  const preview = el('div', { class: 'fb-preview', id: 'fb-preview', 'aria-live': 'polite' }); box.appendChild(preview);
+
+  box.appendChild(listPicker(model, 'users', 'user', 'User'));
+  box.appendChild(listPicker(model, 'actions', 'action', 'Action'));
+  box.appendChild(listPicker(model, 'resources', 'resource', 'Resource'));
+
+  const scope = el('div', { class: 'fb-field' });
+  scope.innerHTML = '<label class="field-label" for="fb-scope">Scope (optional)</label>';
+  const si = el('input', { class: 'field-input', id: 'fb-scope', placeholder: 'e.g. own projects only' }); si.value = v.scope;
+  si.addEventListener('input', () => { v.scope = si.value; updateFeaturePreview(); });
+  scope.appendChild(si); box.appendChild(scope);
+
+  // Surfaces: one or more, as chips.
+  const sf = el('div', { class: 'fb-field' });
+  const sl = el('div', { class: 'field-label' }); sl.textContent = 'Surfaces (one or more)'; sf.appendChild(sl);
+  const row = el('div', { class: 'cat-row' });
+  const chips = el('div', { class: 'kind-chips', role: 'group', 'aria-label': 'Surfaces', id: 'fb-surfaces' });
+  model.surfaces.forEach(s => {
+    const on = v.surfaces.includes(s.ID);
+    const lab = el('label', { class: 'kind-chip' + (on ? ' on' : '') });
+    const cb = el('input', { type: 'checkbox' }); cb.checked = on;
+    cb.addEventListener('change', () => {
+      v.surfaces = cb.checked ? v.surfaces.concat(s.ID) : v.surfaces.filter(x => x !== s.ID);
+      lab.classList.toggle('on', cb.checked); updateFeaturePreview();
+    });
+    lab.appendChild(cb); lab.appendChild(document.createTextNode(s.ID + ' ' + s.Name + (s.pending ? ' (new)' : '')));
+    chips.appendChild(lab);
+  });
+  row.appendChild(chips);
+  const nb = el('button', { type: 'button', class: 'btn-new-cat' }); nb.textContent = '+ New';
+  nb.addEventListener('click', () => { fb.newFor = fb.newFor && fb.newFor.field === 'surfaces' ? null : { key: 'surfaces', field: 'surfaces' }; fb.newValues = {}; renderFeatureBuilder(); });
+  row.appendChild(nb); sf.appendChild(row);
+  if (fb.newFor && fb.newFor.field === 'surfaces') sf.appendChild(newListItemForm(model, FEATURE_LISTS.find(c => c.key === 'surfaces')));
+  box.appendChild(sf);
+
+  const out = el('div', { class: 'fb-field' });
+  out.innerHTML = '<label class="field-label" for="fb-outcome">Outcome</label>';
+  const oi = el('textarea', { class: 'field-textarea', id: 'fb-outcome', rows: '2', placeholder: 'What the user sees when it worked. This becomes the acceptance criterion.' }); oi.value = v.outcome;
+  oi.addEventListener('input', () => { v.outcome = oi.value; });
+  out.appendChild(oi); box.appendChild(out);
+
+  const grid = el('div', { class: 'fb-grid' });
+  [['priority', 'Priority', FEATURE_PRIORITIES], ['status', 'Status', FEATURE_STATUSES]].forEach(([field, label, options]) => {
+    const f = el('div', { class: 'fb-field' });
+    f.innerHTML = '<label class="field-label" for="fb-' + field + '">' + label + '</label>';
+    const s = el('select', { class: 'field-select', id: 'fb-' + field });
+    options.forEach(o => { const op = el('option', { value: o }); op.textContent = o; s.appendChild(op); });
+    s.value = v[field]; s.addEventListener('change', () => { v[field] = s.value; });
+    f.appendChild(s); grid.appendChild(f);
+  });
+  box.appendChild(grid);
+
+  box.appendChild(listPicker(model, 'journeys', 'journey', 'Journey', { blank: 'No journey' }));
+
+  const dep = el('div', { class: 'fb-field' });
+  dep.innerHTML = '<label class="field-label" for="fb-depends">Depends on (optional)</label>';
+  const ds = el('select', { class: 'field-select', id: 'fb-depends', multiple: '' });
+  model.features.forEach(f => {
+    const o = el('option', { value: f.ID }); o.selected = v.dependsOn.includes(f.ID);
+    o.textContent = f.ID + ' ' + (f.pending ? featureSentence(model, f) + ' (new)' : [f.User, f.Action, f.Resource].map(x => String(x || '').replace(/^\S+\s/, '')).join(' '));
+    ds.appendChild(o);
+  });
+  ds.addEventListener('change', () => { v.dependsOn = [...ds.selectedOptions].map(o => o.value); });
+  dep.appendChild(ds);
+  const hint = el('div', { class: 'fb-hint' }); hint.textContent = 'Ctrl-click (Cmd-click on a Mac) to pick more than one.'; dep.appendChild(hint);
+  box.appendChild(dep);
+
+  const err = el('div', { class: 'fb-error', id: 'fb-error' }); err.textContent = fb.error; box.appendChild(err);
+  updateFeaturePreview();
+}
+
+function updateFeaturePreview() {
+  const p = $('fb-preview'); if (!p) return;
+  const model = currentFeatureModel(), v = fb.values;
+  const id = nextFeatureId('FT', model.features);
+  p.innerHTML = '<span class="fb-id">' + esc(id) + '</span>' + (v.user || v.action || v.resource ? esc(featureSentence(model, v)) : '<span class="fb-hint">Pick a user, an action and a resource.</span>');
+}
+
+function submitFeature() {
+  const doc = docs[currentDocIdx], model = currentFeatureModel(), v = fb.values;
+  const missing = [['user', 'a user'], ['action', 'an action'], ['resource', 'a resource']].filter(([k]) => !v[k]).map(([, n]) => n);
+  if (!v.surfaces.length) missing.push('at least one surface');
+  if (!v.outcome.trim()) missing.push('an outcome');
+  if (missing.length) { fb.error = 'Add ' + missing.join(', ') + '.'; $('fb-error').textContent = fb.error; return; }
+  const id = nextFeatureId('FT', model.features);
+  const values = Object.assign({}, v, { scope: v.scope.trim(), outcome: v.outcome.trim() });
+  doc.state.added.push({ id: Date.now(), section: 'Features', title: featureSentence(model, values),
+    struct: { type: 'feature', pid: id, values, row: featureRow(model, id, values) } });
+  saveState(doc);
+  fb.values = newFeatureValues(); fb.error = '';
+  renderAddedList(); rebuildAddedSidebar(); renderFeatureBuilder();
 }
 
 function closeAddPanel() { $('add-panel').classList.remove('open'); $('add-overlay').classList.remove('open'); }
@@ -1696,10 +2080,14 @@ $('new-section-input').addEventListener('keydown', e => {
 });
 
 $('add-submit-btn').addEventListener('click', () => {
+  const doc = docs[currentDocIdx];
+  const features = isFeaturesDoc(doc);
+  if (features && fb.mode === 'build') { submitFeature(); return; }
   const title = $('add-item-text').value.trim();
   if (!title) { $('add-item-text').focus(); return; }
-  const doc = docs[currentDocIdx];
-  doc.state.added.push({ id: Date.now(), section: $('add-section-select').value, title, details: $('add-item-details').value.trim() });
+  const item = { id: Date.now(), section: $('add-section-select').value, title, details: $('add-item-details').value.trim() };
+  if (features && item.section === 'Features') item.described = true;
+  doc.state.added.push(item);
   saveState(doc);
   $('add-item-text').value = ''; $('add-item-details').value = '';
   renderAddedList(); rebuildAddedSidebar();
@@ -1712,11 +2100,18 @@ function renderAddedList() {
   $('added-items-title').textContent = 'Added (' + doc.state.added.length + ')';
   doc.state.added.forEach(ai => {
     const row = document.createElement('div'); row.className = 'added-item-row';
-    row.innerHTML = '<div class="added-item-body"><div class="added-item-title">' + esc(ai.title) + '</div><div class="added-item-cat">' + esc(ai.section) + '</div>' +
+    const kind = ai.struct ? ai.struct.pid + ' · ' + ai.section : ai.described ? ai.section + ' · described in words' : ai.section;
+    row.innerHTML = '<div class="added-item-body"><div class="added-item-title">' + esc(ai.title) + '</div><div class="added-item-cat">' + esc(kind) + '</div>' +
       (ai.details ? '<div class="added-item-details">' + esc(ai.details) + '</div>' : '') + '</div><button class="btn-rm" aria-label="Remove">×</button>';
     row.querySelector('.btn-rm').addEventListener('click', () => {
+      // Keep the review consistent: an added item that another added item refers to stays.
+      if (ai.struct) {
+        const users = doc.state.added.filter(x => x !== ai && x.struct && (x.struct.row.match(FEATURE_ID_RE) || []).includes(ai.struct.pid));
+        if (users.length) { alert(ai.struct.pid + ' is used by ' + users.map(x => x.struct.pid).join(', ') + '. Remove those first.'); return; }
+      }
       doc.state.added = doc.state.added.filter(x => x.id !== ai.id);
       saveState(doc); renderAddedList(); rebuildAddedSidebar();
+      if (isFeaturesDoc(doc) && fb.mode === 'build' && !$('feature-builder').hidden) renderFeatureBuilder();
     });
     list.appendChild(row);
   });
@@ -1803,7 +2198,7 @@ function buildExport() {
       try {
         const r = await saveReviewToFolder(target, md, date);
         sec.querySelector('.name').textContent = r.path;
-        if (r.unchanged) setStatus('No changes since this file; not saved again', 'ok'); else setStatus('✓ Saved', 'ok');
+        if (r.unchanged) setStatus('Nothing new to apply since this file; not saved again', 'ok'); else setStatus('✓ Saved', 'ok');
       }
       catch (e) { setStatus('Save failed: ' + e.message, 'err'); }
     };
