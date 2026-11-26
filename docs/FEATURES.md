@@ -1,6 +1,6 @@
 # Features
 
-Status: Draft | Owner: @Bankole2000 | Version: 0.4 | Last updated: 2026-11-26
+Status: Approved | Owner: @Bankole2000 | Version: 0.4 | Last updated: 2026-11-26
 References: PRD.md (requirements FR-, business rules BR-), platform-core.md section 5 (feature areas F1 to F22), ROADMAP.md (milestones)
 
 ## How this file works
@@ -199,4 +199,4 @@ These PRD items are not user + action + resource, so they stay in the PRD and ar
 - NFR-001 to NFR-009 are quality targets that apply across features.
 
 ## Approval
-Reviewed by @Bankole2000 on 2026-11-26 (docs/reviews/2026-11-26-FEATURES.md), verdict Approved with changes: every proposed feature approved; FT-049 to FT-051 stay deferred. Version 0.4 adds journey J-10 (FT-033 and FT-034 move there from J-06, so they stay in M5 as ROADMAP plans) and the generated Requirements and Milestone columns; it is in review.
+Reviewed by @Bankole2000 on 2026-11-26 (docs/reviews/2026-11-26-FEATURES.md), verdict Approved with changes: every proposed feature approved; FT-049 to FT-051 stay deferred. Version 0.4 adds journey J-10 (FT-033 and FT-034 move there from J-06, so they stay in M5 as ROADMAP plans) and the generated Requirements and Milestone columns; it is in review. Version 0.4 approved by @Bankole2000 on 2026-11-26 (docs/reviews/2026-11-26-FEATURES-2.md, verdict Approved with changes; its only requests were two test features, left out at the owner's request).
