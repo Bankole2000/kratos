@@ -1,6 +1,6 @@
 # Testing and Acceptance
 
-Status: In review | Owner: @Bankole2000 | Version: 1.2 | Last updated: 2026-11-26
+Status: Approved | Owner: @Bankole2000 | Version: 1.2 | Last updated: 2026-11-26
 References: FEATURES.md, PRD.md, TECHNICAL.md
 
 ## Strategy
@@ -105,4 +105,4 @@ See the README [Commands](../README.md#commands) table. Unit, integration and co
 - Known limitations listed in the release notes. Human sign-off: @Bankole2000.
 
 ## Approval
-Approved by @Bankole2000 on 2026-11-25, revision 1.0, to start building. Approved as drafted without an item-by-item review; sections are revisited when the milestone that needs them is planned, and open TBDs stay open decisions. Revision 1.1 adds project components (PRD OD-007), approved as drafted by @Bankole2000 on 2026-11-25. Revision 1.2 adds a Features column and TC-046 to TC-052 for PRD FR-043 to FR-049; it is in review.
+Approved by @Bankole2000 on 2026-11-25, revision 1.0, to start building. Approved as drafted without an item-by-item review; sections are revisited when the milestone that needs them is planned, and open TBDs stay open decisions. Revision 1.1 adds project components (PRD OD-007), approved as drafted by @Bankole2000 on 2026-11-25. Revision 1.2 adds a Features column and TC-046 to TC-052 for PRD FR-043 to FR-049; approved as drafted by @Bankole2000 on 2026-11-26 (docs/reviews/2026-11-26-TESTING.md).

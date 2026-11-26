@@ -273,7 +273,7 @@ After launch, v2 begins with the Rust SDK (F11) and then the local MCP server (F
 
 | # | Question | Notes |
 |---|---|---|
-| D1 | Deployment target: keep **ECS**, or something simpler for a single Rust binary + Postgres (Fly.io, Railway, a VPS)? | One service makes ECS less necessary. |
+| D1 | Deployment target: keep **ECS**, or something simpler for a single Rust binary + Postgres (Fly.io, Railway, a VPS)? | **Decided 2026-11-26: Railway** for api and web (owner's TECHNICAL.md review); a VPS, or Vercel or Netlify for web, may be considered later. |
 | D2 | ~~SQLx or SeaORM?~~ **Decided:** SQLx only for the MVP. | SeaORM can be added later for CRUD only, on the same SQLx pool. If so: one migration tool (`sqlx migrate`), match SeaORM's SQLx version, and keep ingestion and reporting queries in SQLx. |
 | D3 | Metric event retention period, and when to roll raw events into daily totals. | Affects database size and cost. |
 | D4 | How much of `apps/web` is public (SEO) vs dashboard behind login? | Decides how many pages need SSR. |

@@ -92,6 +92,7 @@ Validation
 - Escalate financial, medical, legal, privacy and security decisions for qualified review using the `review:*` labels in docs/GITHUB.md.
 
 ## Project-specific conventions
+- **Configurable TBDs:** a TBD that can be a setting (a threshold, interval, limit, timeout, period or count) is assumed to be configurable. Write it as a named setting with a default (environment variable or admin setting) and record the default, instead of leaving an open decision. Only targets the team commits to, policies and vendor choices stay TBD or become open decisions (owner, 2026-11-26).
 - Apps and stack: see docs/TECHNICAL.md, Components, and each `apps/<app>/AGENTS.md`.
 - Commands: see the README [Commands](README.md#commands) table.
 - Generated files are never edited by hand: `openapi/openapi.json`, the generated code in `packages/api-client-ts` and in each SDK, and the SQLx offline query data (`.sqlx/`). Regenerate them and commit the result with the change that caused it.
