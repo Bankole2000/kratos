@@ -526,7 +526,7 @@ function truncate(s, n) { s = s.replace(/\s+/g, ' ').trim(); return s.length > n
 function parseDoc(text) {
   const lines = String(text).replace(/\r\n?/g, '\n').split('\n');
   const items = [], sections = [], meta = {};
-  let h1 = '', h2 = '', h3 = '', para = null, inFence = false;
+  let h1 = '', h2 = '', h3 = '', para = null, inFence = false, generated = '';
   const section = () => [h2, h3].filter(Boolean).join(' › ') || (h1 ? 'Introduction' : '');
   const push = it => { it.section = section(); items.push(it); };
   const flushPara = () => {
@@ -539,6 +539,10 @@ function parseDoc(text) {
 
   for (let i = 0; i < lines.length; i++) {
     const l = lines[i];
+    // Generated blocks (e.g. FEATURES.md's coverage matrix) are rewritten by a script, not reviewed.
+    const gm = /^\s*<!--\s*([\w-]+):(start|end)\s*-->\s*$/.exec(l);
+    if (gm) { flushPara(); generated = gm[2] === 'start' ? gm[1] : ''; continue; }
+    if (generated) continue;
     if (/^\s*(```|~~~)/.test(l)) { addPara(l, i); inFence = !inFence; continue; }
     if (inFence) { addPara(l, i); continue; }
 
@@ -614,7 +618,7 @@ function parseDoc(text) {
     } else if (it.kind === 'list' || it.kind === 'check') {
       const m = ID_RE.exec(it.lead.trim());
       id = m ? m[1] : '';
-      title = id ? it.lead.trim().slice(m[0].length).replace(/^\s*(\([^)]*\))?\s*[:—–-]?\s*/, '') : it.lead;
+      title = id ? it.lead.trim().slice(m[0].length).replace(/^\s*(\*\*|`)?\s*(\([^)]*\))?\s*[:—–-]?\s*(\*\*|`)?\s*/, '') : it.lead;
       if (!title) title = it.lead;
       delete it.lead;
     } else {
@@ -841,7 +845,29 @@ function normalizeReview(md) {
     .replace(/^Resolution: .*$/gm, 'Resolution:')
     .replace(/\s+/g, ' ').trim();
 }
-function sameReview(a, b) { return normalizeReview(a) === normalizeReview(b); }
+// What a document review asks the agent to do: its verdict and its requests (and, for
+// FEATURES.md, which items were accepted, since accepting a feature approves it). Line
+// numbers, dates, coverage counts and document versions don't count as a change.
+function reviewRequests(md) {
+  md = String(md).replace(/\r\n?/g, '\n') + '\n## ';
+  if (!/^# Review: /.test(md)) return null;
+  const verdict = (/^- Verdict: (.*)$/m.exec(md) || [])[1] || '';
+  const heads = ['Action required', 'Added items', 'Placeholder values'];
+  if (/^> Features: /m.test(md)) heads.push('Accepted');
+  const parts = heads.map(h => {
+    const m = new RegExp('^## ' + h + ' \\(\\d+\\)\n([\\s\\S]*?)(?=^## )', 'm').exec(md);
+    return h + ':' + (m ? m[1] : '');
+  });
+  return [verdict].concat(parts).join('\n')
+    .replace(/^Resolution: .*$/gm, '')
+    .replace(/ · Line \d+| \(line \d+\)|^\d+ of these were accepted in bulk.*$/gm, '')
+    .replace(/\s+/g, ' ').trim();
+}
+function sameReview(a, b) {
+  const ra = reviewRequests(a), rb = reviewRequests(b);
+  if (ra !== null && rb !== null) return ra === rb;
+  return normalizeReview(a) === normalizeReview(b);
+}
 
 // The newest existing review file for a document, from the file names in
 // docs/reviews (YYYY-MM-DD-<name>.md, then -2, -3 … on the same day).
@@ -892,7 +918,7 @@ function buildReviewMarkdown(doc, state, opts) {
   L.push('- Coverage: ' + decided.length + ' of ' + doc.items.length + ' items decided; ' + action.length + ' need action; ' + added.length + ' added; ' + filled.length + ' with placeholder values');
   L.push('- Review status: Open', '');
   L.push('> For agents: apply every entry under "Action required", "Added items" and "Placeholder values" to `' + doc.path + '`, then replace each "Resolution: pending" with what you did (or why not). Set "Review status" to Applied when all entries are resolved, or Partially applied otherwise. Leave accepted items unchanged. Line numbers refer to the document as reviewed; find items by ID or text if it has changed. Follow AGENTS.md "Applying doc reviews".', '');
-  if (doc.docType === 'features') L.push('> Features: set Status to `approved` for every feature under "Accepted" and to `deferred` for every "Defer". Add rows built from the lists exactly as given; write features described in words as rows with status `proposed`.', '');
+  if (doc.docType === 'features') L.push('> Features: set Status to `approved` for every `proposed` feature under "Accepted" (other statuses stay as they are), and to `deferred` for every "Defer". Add rows built from the lists exactly as given; write features described in words as rows with status `proposed`.', '');
 
   L.push('## Action required (' + action.length + ')', '');
   if (!action.length) L.push('None.', '');
@@ -2172,7 +2198,7 @@ function buildExport() {
       try {
         const r = await saveReviewToFolder(target, md, date);
         sec.querySelector('.name').textContent = r.path;
-        if (r.unchanged) setStatus('No changes since this file; not saved again', 'ok'); else setStatus('✓ Saved', 'ok');
+        if (r.unchanged) setStatus('Nothing new to apply since this file; not saved again', 'ok'); else setStatus('✓ Saved', 'ok');
       }
       catch (e) { setStatus('Save failed: ' + e.message, 'err'); }
     };
