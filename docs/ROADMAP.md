@@ -1,6 +1,6 @@
 # Development Roadmap
 
-Status: Approved | Owner: @Bankole2000 | Version: 1.3 | Last updated: 2026-11-25
+Status: Approved | Owner: @Bankole2000 | Version: 1.4 | Last updated: 2026-11-26
 References: PRD.md, DESIGN.md, TECHNICAL.md, TESTING.md, platform-core.md section 7
 
 ## Milestones
@@ -36,6 +36,7 @@ Only M0 is planned in detail. Later milestones are broken down once the previous
 | TASK-013 | Bruno collection for the api, generated from the OpenAPI spec and curated, with a drift check | api | NFR-001 | TC-036 | M0 | TASK-004 | Medium | #20 |
 | TASK-014 | api default port 18080 instead of 8080 | api | — | TC-000 | M0 | None | Medium | #24 |
 | TASK-015 | CORS on the api for the web and Tauri dashboard origins (`API_CORS_ORIGINS`) | api | FR-035 | TC-000 | M0 | None | High | #26 |
+| TASK-016 | Features list pilot: `docs/FEATURES.md` with users, actions, resources, platforms, journeys and features drawn from the PRD | repo | FR-001 to FR-042 | — | M1 | None | High | #39 |
 
 ## Planning rules
 - Plan only the next useful milestone in detail; split large tasks.
