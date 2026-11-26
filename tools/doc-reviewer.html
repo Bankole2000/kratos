@@ -114,6 +114,8 @@ button{font-family:var(--font)}
 .btn-card-approve{margin-top:6px;width:100%;background:var(--d0);border:1px solid var(--d0);color:#fff;border-radius:6px;padding:6px 10px;font-size:12px;font-weight:500;cursor:pointer}
 .btn-card-approve:hover{filter:brightness(1.08)}
 .btn-card-approve:focus-visible,.btn-card-accept:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn-card-all{margin-top:6px;width:100%;background:none;border:1px solid var(--border-strong);color:var(--fg-muted);border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer}
+.btn-card-all:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .sb-item{display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:6px;cursor:pointer;font-size:12px;color:var(--fg-muted);line-height:1.4}
 .sb-item:hover{background:var(--tag-bg);color:var(--fg)}
 .sb-item.active{background:var(--accent-bg);color:var(--accent);font-weight:500}
@@ -527,12 +529,20 @@ function truncate(s, n) { s = s.replace(/\s+/g, ' ').trim(); return s.length > n
 // Splits a markdown document into reviewable items: table rows, top-level list
 // items (with their nested content), paragraphs, code blocks, header lines and any
 // heading that still contains a placeholder. Items keep the document's own IDs.
+// Review directives, written as HTML comments in the document (invisible when rendered):
+//   <!-- review:focus FR-012, OBJ-001, "quoted text" -->  items the agent asks the reviewer to look at
+//   <!-- review:ignore-columns Requirements, Status -->    table columns that don't count as a change
+//   <!-- review:skip -->                                    the current section is boilerplate
+// Sections that are boilerplate by name, approved with the document rather than item by item.
+const BOILERPLATE_SECTIONS = /^(How this file works|Approval|Revision history)$/i;
+
 function parseDoc(text) {
   const lines = String(text).replace(/\r\n?/g, '\n').split('\n');
   const items = [], sections = [], meta = {};
+  const focus = { ids: new Set(), quotes: [] }, ignoreCols = new Set(), skipSections = new Set();
   let h1 = '', h2 = '', h3 = '', para = null, inFence = false, generated = '';
   const section = () => [h2, h3].filter(Boolean).join(' › ') || (h1 ? 'Introduction' : '');
-  const push = it => { it.section = section(); items.push(it); };
+  const push = it => { it.section = section(); it.h2 = h2; items.push(it); };
   const flushPara = () => {
     if (!para) return;
     const c = para.lines.join('\n').trim();
@@ -568,6 +578,18 @@ function parseDoc(text) {
         if (m) meta[m[1].toLowerCase()] = m[2].trim();
       });
       items.push({ kind: 'meta', section: 'Document header', content: l.trim(), start: i, end: i });
+      continue;
+    }
+    const rd = /^\s*<!--\s*review:([\w-]+)\s*([\s\S]*?)\s*-->\s*$/.exec(l);
+    if (rd) {
+      flushPara();
+      const arg = rd[2];
+      if (rd[1] === 'focus') {
+        arg.replace(/"([^"]+)"/g, (m, q) => { focus.quotes.push(q); return ''; })
+          .split(/[\s,]+/).filter(Boolean).forEach(id => focus.ids.add(id));
+      } else if (rd[1] === 'ignore-columns') {
+        arg.split(',').map(s => s.trim().toLowerCase()).filter(Boolean).forEach(c => ignoreCols.add(c));
+      } else if (rd[1] === 'skip') skipSections.add(section());
       continue;
     }
     if (/^\s*<!--.*-->\s*$/.test(l)) continue;
@@ -641,11 +663,63 @@ function parseDoc(text) {
     }
     it.placeholders = it.phs.map(p => p.token);
     it.tbd = countTbd(it.content);
-    let key = id || it.kind + '|' + it.section + '|' + it.hash;
+    // Review hash: the content without ignored columns, so a generated column (or a status an
+    // agent sets when applying a review) doesn't make the item count as changed.
+    it.rhash = it.kind === 'row' && ignoreCols.size && it.headers.some(h => ignoreCols.has(h.toLowerCase()))
+      ? hash(it.cells.filter((c, k) => !ignoreCols.has(String(it.headers[k] || '').toLowerCase())).join('|'))
+      : it.hash;
+    it.focus = (!!id && focus.ids.has(id)) || focus.quotes.some(q => it.content.includes(q));
+    // Boilerplate: header lines, introduction paragraphs and sections such as "How this file
+    // works" and "Approval". Anything with a placeholder or a TBD is still reviewed.
+    const inSkipped = skipSections.has(it.section) || skipSections.has(it.h2) || BOILERPLATE_SECTIONS.test(it.h2 || '');
+    it.boiler = !it.focus && !it.placeholders.length && !it.tbd &&
+      (it.kind === 'meta' || inSkipped || (it.kind === 'text' && !it.h2));
+    delete it.h2;
+    let key = id || it.kind + '|' + it.section + '|' + it.rhash;
     if (seen[key]) { seen[key]++; key += '~' + seen[key]; } else seen[key] = 1;
     it.key = key;
   }
   return { items, sections: [...new Set(sections)], meta, h1 };
+}
+
+// ── Review only what changed ────────────────────────────
+// Every review file ends with a baseline: the items the reviewer accepted, as key → review
+// hash. Items whose text is unchanged since some earlier accepted review are carried forward
+// (accepted again without being shown); new and edited items are reviewed.
+const BASELINE_RE = /<!--\s*review-baseline\s+(\{[\s\S]*?\})\s*-->/;
+function parseBaseline(md) {
+  md = String(md);
+  const doc = (/^- Document: `([^`]+)`/m.exec(md) || [])[1];
+  const m = BASELINE_RE.exec(md);
+  if (!doc || !m) return null;
+  try { return { path: doc, items: JSON.parse(m[1]) }; } catch (e) { return null; }
+}
+// Merges the baselines of many review files: path → key → set of accepted hashes.
+function mergeBaselines(texts) {
+  const out = {};
+  for (const t of texts) {
+    const b = parseBaseline(t); if (!b) continue;
+    const m = out[b.path] || (out[b.path] = {});
+    for (const [k, h] of Object.entries(b.items)) (m[k] || (m[k] = new Set())).add(h);
+  }
+  return out;
+}
+function baselineComment(entries) {
+  const json = JSON.stringify(entries).replace(/--/g, '-\\u002d');
+  return '<!-- review-baseline ' + json + ' -->';
+}
+// Splits a document's items into those to review, those carried forward unchanged and
+// boilerplate. Items the agent asked about (review:focus) and items with placeholders are
+// always reviewed. With showAll, everything is reviewed.
+function partitionItems(items, baseline, showAll) {
+  const out = { review: [], carried: [], boiler: [] };
+  for (const it of items) {
+    if (showAll || it.focus || it.placeholders.length) out.review.push(it);
+    else if (it.boiler) out.boiler.push(it);
+    else if (baseline && baseline[it.key] && baseline[it.key].has(it.rhash)) out.carried.push(it);
+    else out.review.push(it);
+  }
+  return out;
 }
 
 // ── Project setup ──────────────────────────────────────
@@ -843,6 +917,7 @@ function acceptRemaining(items, decisions, section) {
 // Decisions first: an item needs a decision when it has a placeholder nobody has answered,
 // a TBD, an open decision (OD-…, unless it already says Decided) or a proposed ADR.
 function needsDecision(item, setup, fills) {
+  if (item.focus) return true;
   if (placeholderStates(item, setup, fills).some(s => !s.value)) return true;
   if (item.tbd) return true;
   if (/^OD-/.test(item.id || '') && !/\bDecided\b/i.test(item.content)) return true;
@@ -936,11 +1011,21 @@ function buildReviewMarkdown(doc, state, opts) {
   const action = decided.filter(it => decisions[it.key].d !== 'd0');
   const accepted = decided.filter(it => decisions[it.key].d === 'd0');
   const notReviewed = items.filter(it => !decisions[it.key]);
-  const states = new Map(items.map(it => [it, placeholderStates(it, setup, fills[it.key])]));
+  const carried = doc.carried || [], boiler = doc.boiler || [];
+  const everything = items.concat(carried, boiler).sort((a, b) => a.line - b.line);
+  const states = new Map(everything.map(it => [it, placeholderStates(it, setup, fills[it.key])]));
   const filled = items.filter(it => states.get(it).some(s => s.source === 'fill'));
-  const open = items.filter(it => states.get(it).some(s => !s.value));
-  const fromSetup = items.reduce((n, it) => n + states.get(it).filter(s => s.source === 'setup').length, 0);
-  const tbdItems = items.filter(it => it.tbd);
+  const open = everything.filter(it => states.get(it).some(s => !s.value));
+  const fromSetup = everything.reduce((n, it) => n + states.get(it).filter(s => s.source === 'setup').length, 0);
+  const tbdItems = everything.filter(it => it.tbd);
+  // The baseline for the next review: what is accepted now, what was carried forward, and
+  // (in FEATURES.md) deferred features, since deferring is settled once applied.
+  const baseline = {};
+  for (const it of items) {
+    const d = decisions[it.key];
+    if (d && (d.d === 'd0' || (doc.docType === 'features' && d.d === 'd1'))) baseline[it.key] = it.rhash || it.hash;
+  }
+  for (const it of carried) baseline[it.key] = it.rhash || it.hash;
   const m = doc.meta || {};
   const docInfo = [m.status && 'status ' + m.status, m.version && 'version ' + m.version].filter(Boolean).join(', ');
 
@@ -950,7 +1035,8 @@ function buildReviewMarkdown(doc, state, opts) {
   L.push('- Reviewer: ' + (opts.reviewer || 'Unnamed reviewer'));
   L.push('- Date: ' + opts.date);
   L.push('- Verdict: ' + (state.verdict || 'Not given') + (state.asDrafted && state.verdict === 'Approved' ? ' (approved as drafted by the reviewer: every item not flagged or changed was accepted in bulk)' : ''));
-  L.push('- Coverage: ' + decided.length + ' of ' + items.length + ' items decided; ' + action.length + ' need action; ' + added.length + ' added; ' + filled.length + ' with placeholder values');
+  L.push('- Coverage: ' + decided.length + ' of ' + items.length + ' items decided; ' + action.length + ' need action; ' + added.length + ' added; ' + filled.length + ' with placeholder values' +
+    (carried.length ? '; ' + carried.length + ' unchanged since an earlier review' : '') + (boiler.length ? '; ' + boiler.length + ' boilerplate' : ''));
   L.push('- Review status: Open', '');
   L.push('> For agents: apply every entry under "Action required", "Added items" and "Placeholder values" to `' + doc.path + '`, then replace each "Resolution: pending" with what you did (or why not). Set "Review status" to Applied when all entries are resolved, or Partially applied otherwise. Leave accepted items unchanged. Line numbers refer to the document as reviewed; find items by ID or text if it has changed. Follow AGENTS.md "Applying doc reviews".', '');
   if (doc.docType === 'features') L.push('> Features: set Status to `approved` for every `proposed` feature under "Accepted" (other statuses stay as they are), and to `deferred` for every "Defer". Add rows built from the lists exactly as given; write features described in words as rows with status `proposed`.', '');
@@ -1014,9 +1100,17 @@ function buildReviewMarkdown(doc, state, opts) {
   for (const it of accepted) L.push('- ' + ref(it) + (it.id ? ' — ' + it.title : '') + ' (line ' + it.line + ')');
   if (accepted.length) L.push('');
 
+  if (carried.length || boiler.length) {
+    L.push('## Not shown (' + (carried.length + boiler.length) + ')', '');
+    if (carried.length) L.push('- ' + carried.length + ' item' + (carried.length !== 1 ? 's' : '') + ' unchanged since an earlier review, accepted again without being shown.');
+    if (boiler.length) L.push('- ' + boiler.length + ' boilerplate item' + (boiler.length !== 1 ? 's' : '') + ' (document header, introduction, "How this file works", "Approval"), approved with the document.');
+    L.push('');
+  }
+
   L.push('## Not reviewed (' + notReviewed.length + ')', '');
   if (!notReviewed.length) L.push('None.', '');
   for (const it of notReviewed) L.push('- ' + ref(it) + (it.id ? ' — ' + it.title : '') + ' (line ' + it.line + ')');
+  L.push('', baselineComment(baseline));
   return L.join('\n').replace(/\n{3,}/g, '\n\n').trim() + '\n';
 }
 
@@ -1228,7 +1322,7 @@ const canPickDirectory = typeof window.showDirectoryPicker === 'function';
 const SETUP_TARGET = { path: 'project-setup.md', savedName: '' };
 
 let docs = [];              // {path,text,docType,typeConfig,items,sections,meta,h1,state,stale,savedName}
-let project = { name: '', rootName: '', docsDir: null, docsDirPath: '', detected: {} };
+let project = { name: '', rootName: '', docsDir: null, docsDirPath: '', detected: {}, baselines: {} };
 let setup = newSetup();
 let currentDocIdx = 0, currentItemIdx = 0;
 
@@ -1258,7 +1352,7 @@ function loadState(doc) {
   const state = { decisions: {}, added: [], verdict: '', fills: {} };
   let stale = 0;
   if (saved) {
-    const current = k => doc.items.find(i => i.key === k);
+    const current = k => doc.allItems.find(i => i.key === k);
     for (const [k, v] of Object.entries(saved.decisions || {})) {
       const it = current(k);
       if (it && it.hash === v.hash) state.decisions[k] = v; else stale++;
@@ -1310,7 +1404,15 @@ function loadSetup() {
 function makeDoc(path, text) {
   const parsed = parseDoc(text);
   const docType = detectDocType(path, parsed.h1);
-  return { path, text, docType, typeConfig: DOC_TYPES[docType], items: parsed.items, sections: parsed.sections, meta: parsed.meta, h1: parsed.h1, state: null, stale: 0, savedName: '' };
+  const doc = { path, text, docType, typeConfig: DOC_TYPES[docType], allItems: parsed.items, items: [], carried: [], boiler: [], showAll: false, sections: parsed.sections, meta: parsed.meta, h1: parsed.h1, state: null, stale: 0, savedName: '' };
+  partitionDoc(doc);
+  return doc;
+}
+// Splits the document into items to review, items unchanged since an earlier review and
+// boilerplate (see partitionItems).
+function partitionDoc(doc) {
+  const r = partitionItems(doc.allItems, project.baselines[doc.path], doc.showAll);
+  doc.items = r.review; doc.carried = r.carried; doc.boiler = r.boiler;
 }
 
 function finishLoading(found, rootName) {
@@ -1358,6 +1460,9 @@ async function openWithDirectoryPicker() {
   if (docsDir) {
     for await (const [name, h] of docsDir.entries()) if (h.kind === 'file' && /\.md$/i.test(name)) found.push({ path: 'docs/' + name, text: await (await h.getFile()).text() });
     project.docsDir = docsDir; project.docsDirPath = 'docs/';
+    const reviews = await subDir(docsDir, ['reviews']), texts = [];
+    if (reviews) for await (const [name, h] of reviews.entries()) if (h.kind === 'file' && /\.md$/i.test(name)) texts.push(await (await h.getFile()).text());
+    project.baselines = mergeBaselines(texts);
   } else {
     // The user picked the docs folder itself (or a folder of loose docs).
     for await (const [name, h] of root.entries()) if (h.kind === 'file' && /\.md$/i.test(name) && !found.some(f => f.path === name)) found.push({ path: name, text: await (await h.getFile()).text() });
@@ -1414,6 +1519,8 @@ $('folder-input').addEventListener('change', async e => {
     });
     project.detected.branch = det.branch; project.detected.branchSource = det.source;
   }
+  const reviewFiles = files.filter(f => /^docs\/reviews\/[^/]+\.md$/i.test(rel(f)));
+  project.baselines = mergeBaselines(await Promise.all(reviewFiles.map(f => f.text())));
   const appNames = new Set(files.map(f => /^apps\/([^/]+)\//.exec(rel(f))).filter(Boolean).map(m => m[1]).filter(n => !VALIDATORS.appName(n)));
   if (appNames.size) project.detected.apps = [...appNames].sort();
   readFiles(entries, rootName === 'docs' ? '' : rootName);
@@ -1432,7 +1539,7 @@ dz.addEventListener('drop', e => {
 // QUEUE
 // ═══════════════════════════════════════════════════════
 function docStatus(doc) {
-  const total = doc.items.length, done = Object.keys(doc.state.decisions).length;
+  const total = doc.items.length, done = doc.items.filter(it => doc.state.decisions[it.key]).length;
   return { total, done, pct: total ? Math.round(done / total * 100) : 0, status: done === 0 ? 'notstarted' : done < total ? 'inprogress' : 'complete' };
 }
 
@@ -1485,15 +1592,20 @@ function buildQueue() {
       (ph.answered ? '<span class="chip chip-ok">' + ph.answered + ' answered</span>' : '') +
       (tbd ? '<span class="chip chip-tbd">' + tbd + ' TBD</span>' : '') +
       (doc.state.added.length ? '<span class="chip chip-added">+' + doc.state.added.length + ' added</span>' : '') +
+      (doc.carried.length ? '<span class="chip chip-ok" title="Accepted in an earlier review and unchanged since; not shown">' + doc.carried.length + ' unchanged</span>' : '') +
+      (doc.boiler.length ? '<span class="chip" title="Header, introduction, How this file works, Approval: approved with the document">' + doc.boiler.length + ' boilerplate</span>' : '') +
       '</div>' +
+      (doc.carried.length || doc.boiler.length || doc.showAll ? '<button class="btn-card-all" title="Show every item, including unchanged and boilerplate ones">' + (doc.showAll ? 'Show only what changed' : 'Review everything again') + '</button>' : '') +
       (doc.stale ? '<div class="doc-card-note">' + doc.stale + ' earlier answer' + (doc.stale !== 1 ? 's were' : ' was') + ' cleared because the text changed.</div>' : '') +
       '<div class="doc-card-status"><div class="doc-card-progress"><div class="doc-card-progress-fill" style="width:' + s.pct + '%"></div></div><span class="doc-card-pct">' + s.done + '/' + s.total + '</span></div>' +
       '<div class="verdict-row"><label for="verdict-' + di + '">Verdict</label><select class="field-select" id="verdict-' + di + '"><option value="">Not given</option>' +
       VERDICTS.map(v => '<option' + (doc.state.verdict === v ? ' selected' : '') + '>' + v + '</option>').join('') + '</select></div>' +
       '<button class="btn-review ' + btnCls + '"' + (s.total ? '' : ' disabled') + '>' + (s.total ? btnLabel : 'Nothing to review') + '</button>' +
-      (s.total && !(doc.state.asDrafted && doc.state.verdict === 'Approved' && s.done === s.total) ? '<button class="btn-card-approve" title="Accept every undecided item and set the verdict to Approved, in one step">✓ Approve as drafted</button>' : '') +
+      (!(doc.state.asDrafted && doc.state.verdict === 'Approved' && s.done === s.total) ? '<button class="btn-card-approve" title="Accept every undecided item and set the verdict to Approved, in one step">✓ Approve as drafted</button>' : '') +
       (s.done < s.total ? '<button class="btn-card-accept" title="Accept every item you haven\'t decided on, without opening the document">✓ Accept all' + (s.done ? ' remaining' : '') + ' (' + (s.total - s.done) + ')</button>' : '');
     card.querySelector('.btn-review').addEventListener('click', () => openDocReview(di));
+    const allBtn = card.querySelector('.btn-card-all');
+    if (allBtn) allBtn.addEventListener('click', () => { doc.showAll = !doc.showAll; partitionDoc(doc); buildQueue(); });
     const accBtn = card.querySelector('.btn-card-accept');
     if (accBtn) accBtn.addEventListener('click', () => {
       const open = s.total - s.done;
@@ -1518,7 +1630,7 @@ function buildQueue() {
 }
 
 $('queue-restart-btn').addEventListener('click', () => {
-  docs = []; project = { name: '', rootName: '', docsDir: null, docsDirPath: '', detected: {} }; setup = newSetup();
+  docs = []; project = { name: '', rootName: '', docsDir: null, docsDirPath: '', detected: {}, baselines: {} }; setup = newSetup();
   showScreen('upload-screen');
 });
 $('queue-clear-btn').addEventListener('click', () => {
@@ -1741,8 +1853,8 @@ function buildReviewSidebar() {
   doc.items.forEach((item, idx) => {
     if (idx === 0 && nDecide) {
       const h = document.createElement('div'); h.className = 'sidebar-section';
-      h.textContent = 'Needs a decision (' + nDecide + ')';
-      h.title = 'Open placeholders, TBDs, open decisions and proposed ADRs';
+      h.textContent = 'Look at first (' + nDecide + ')';
+      h.title = 'Items the agent asked you to look at, open placeholders, TBDs, open decisions and proposed ADRs';
       sb.appendChild(h); lastSec = undefined;
     }
     if (idx === nDecide && nDecide) lastSec = null;
@@ -1808,6 +1920,7 @@ function renderItemContent() {
   const mr = $('item-meta-row'); mr.innerHTML = '';
   const chip = (text, cls) => { const c = document.createElement('span'); c.className = 'chip ' + (cls || ''); c.textContent = text; mr.appendChild(c); };
   chip('line ' + item.line);
+  if (item.focus) chip('The agent asks you to look at this', 'chip-tbd');
   const open = states.filter(s => !s.value).length, fromSetup = states.filter(s => s.source === 'setup').length, filled = states.filter(s => s.source === 'fill').length;
   if (open) chip(open + ' open placeholder' + (open !== 1 ? 's' : ''), 'chip-ph');
   if (fromSetup) chip(fromSetup + ' answered in setup', 'chip-ok');

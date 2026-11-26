@@ -2,6 +2,7 @@
 
 Status: Approved | Owner: @Bankole2000 | Version: 0.4 | Last updated: 2026-11-26
 References: PRD.md (requirements FR-, business rules BR-), platform-core.md section 5 (feature areas F1 to F22), ROADMAP.md (milestones)
+<!-- review:ignore-columns Requirements, Milestone, Status -->
 
 ## How this file works
 This file is the list of everything the product lets someone do. It feeds the PRD and the other documents: when it changes, the PRD requirements, TECHNICAL, TESTING and ROADMAP are updated to match, and they refer back to these IDs.

@@ -7,6 +7,9 @@
 ## Apps affected
 <!-- e.g. web; or packages/api-contract (used by web, mobile); or infra. Normally one app per PR. -->
 
+## Please look at (document changes)
+<!-- For changes to docs/: the few items that need the reviewer's judgment, matching the document's review:focus line (AGENTS.md). "None" otherwise. -->
+
 ## Acceptance criteria
 - [ ] <!-- Criterion and evidence -->
 

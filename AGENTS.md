@@ -25,6 +25,12 @@ Humans review documents with `tools/doc-reviewer.html`, which writes one file pe
 5. Do not change items listed under "Accepted", except in a `docs/FEATURES.md` review: there, set Status to `approved` for every accepted feature that was `proposed` (accepting a `deferred` or `out-of-scope` feature keeps its status) and `deferred` for every deferred one. Add the rows the reviewer built from the lists exactly as given; write features described in words as rows with status `proposed`, reusing existing list items where they fit. Then update the PRD (its Features column), TESTING and ROADMAP to match the approved features, and run `node scripts/check-features.mjs --write`. Fill in "Unfilled placeholders" only where the review or other approved documents give you the answer; otherwise leave them for the human.
 6. Update the document header: bump Version and Last updated. Set Status to Approved only when a review file approves it: verdict Approved, or verdict Approved with changes once every requested change is applied as written (owner, 2026-11-26). If any requested change is not applied as written, Status stays In review. Write in the Approval section "Revision <n> approved by <reviewer> on <date> (docs/reviews/<review file>)". A review whose verdict the reviewer set with "Approve as drafted" approves it too (write "Approved as drafted by …" instead). Never write an approval line without such a review file.
 7. Set the review file's "Review status" to Applied, or Partially applied if any entry is unresolved. Never delete review files; they are the audit trail.
+8. Remove from the document's `<!-- review:focus … -->` line the items this review decided (delete the line when it is empty). Never edit the `review-baseline` comment at the end of a review file: the reviewer uses it to show only what changed next time.
+
+When you change a document that a human will review, keep reviews short:
+- Put a `<!-- review:focus FR-012, OBJ-001, "quoted text" -->` line under its header listing the items that need the reviewer's judgment (new or changed meaning, new decisions, anything you were unsure of), at most about ten. The reviewer shows them first. Leave mechanical edits (renumbering, links, generated columns) out of it.
+- List the same items in the PR description under "Please look at".
+- Columns that scripts write are named in a `<!-- review:ignore-columns … -->` line, so changing them doesn't put rows back in review.
 
 ## Execution rules
 1. Read PRD, design, technical specification, roadmap, testing and GitHub protocol as relevant.
