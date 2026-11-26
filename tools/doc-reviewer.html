@@ -111,6 +111,9 @@ button{font-family:var(--font)}
 .btn-ghost.btn-accept{border-color:var(--d0);color:var(--d0);background:var(--d0-bg)}
 .btn-card-accept{margin-top:6px;width:100%;background:none;border:1px solid var(--d0);color:var(--d0);border-radius:6px;padding:6px 10px;font-size:12px;font-weight:500;cursor:pointer}
 .btn-card-accept:hover{background:var(--d0-bg)}
+.btn-card-approve{margin-top:6px;width:100%;background:var(--d0);border:1px solid var(--d0);color:#fff;border-radius:6px;padding:6px 10px;font-size:12px;font-weight:500;cursor:pointer}
+.btn-card-approve:hover{filter:brightness(1.08)}
+.btn-card-approve:focus-visible,.btn-card-accept:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .sb-item{display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:6px;cursor:pointer;font-size:12px;color:var(--fg-muted);line-height:1.4}
 .sb-item:hover{background:var(--tag-bg);color:var(--fg)}
 .sb-item.active{background:var(--accent-bg);color:var(--accent);font-weight:500}
@@ -315,6 +318,7 @@ select.field-select[multiple]{min-height:110px;padding:4px}
     <span class="topbar-title" id="rev-title"></span>
     <span class="type-badge" id="rev-type-badge"></span>
     <span class="topbar-progress" id="rev-progress"></span>
+    <button class="btn-ghost" id="rev-order-btn" aria-pressed="true" title="Switch between items that need a decision first, and document order">Decisions first</button>
     <button class="btn-ghost btn-accept" id="rev-accept-btn" title="Accept every item you haven't decided on; flagged and changed items stay as they are">✓ Accept rest</button>
     <button class="btn-ghost btn-add" id="rev-add-btn">+ Add</button>
     <button class="btn-ghost" id="rev-queue-btn">← Queue</button>
@@ -836,6 +840,35 @@ function acceptRemaining(items, decisions, section) {
   return n;
 }
 
+// Decisions first: an item needs a decision when it has a placeholder nobody has answered,
+// a TBD, an open decision (OD-…, unless it already says Decided) or a proposed ADR.
+function needsDecision(item, setup, fills) {
+  if (placeholderStates(item, setup, fills).some(s => !s.value)) return true;
+  if (item.tbd) return true;
+  if (/^OD-/.test(item.id || '') && !/\bDecided\b/i.test(item.content)) return true;
+  if (/^ADR-/.test(item.id || '') && /\bProposed\b/i.test(item.content)) return true;
+  return false;
+}
+
+// Items in review order: with mode 'decisions', those needing a decision first, then the
+// rest; each group in document order. Returns { items, decisionCount }.
+function orderItems(items, mode, setup, fillsOf) {
+  const byLine = items.slice().sort((a, b) => a.line - b.line);
+  if (mode !== 'decisions') return { items: byLine, decisionCount: 0 };
+  const first = byLine.filter(it => needsDecision(it, setup, fillsOf(it)));
+  return { items: first.concat(byLine.filter(it => !first.includes(it))), decisionCount: first.length };
+}
+
+// "Approve as drafted": the reviewer accepts every undecided item in bulk and gives the
+// verdict Approved in one step, so the approval is recorded as the reviewer's, never written
+// by an agent. Items already flagged or changed keep their decision. Returns the number accepted.
+function approveAsDrafted(items, state) {
+  const n = acceptRemaining(items, state.decisions);
+  state.verdict = 'Approved';
+  state.asDrafted = true;
+  return n;
+}
+
 // Review text without the parts that change on every export or when an agent
 // applies it (date, reviewer, review status, resolutions), for spotting re-exports
 // that record nothing new.
@@ -891,21 +924,23 @@ function hasReviewContent(state) {
 // the document's own IDs (or quoted titles) with line numbers as of the review.
 function buildReviewMarkdown(doc, state, opts) {
   const tc = DOC_TYPES[doc.docType] || DOC_TYPES.general;
+  // Always in document order, whatever order the reviewer worked in.
+  const items = doc.items.slice().sort((a, b) => a.line - b.line);
   const decOf = k => tc.decisions.find(d => d.key === k) || { name: k };
   const decisions = state.decisions || {};
   const added = state.added || [];
   const fills = state.fills || {};
   const setup = opts.setup || null;
   const ref = it => it.id || '"' + it.title + '"';
-  const decided = doc.items.filter(it => decisions[it.key]);
+  const decided = items.filter(it => decisions[it.key]);
   const action = decided.filter(it => decisions[it.key].d !== 'd0');
   const accepted = decided.filter(it => decisions[it.key].d === 'd0');
-  const notReviewed = doc.items.filter(it => !decisions[it.key]);
-  const states = new Map(doc.items.map(it => [it, placeholderStates(it, setup, fills[it.key])]));
-  const filled = doc.items.filter(it => states.get(it).some(s => s.source === 'fill'));
-  const open = doc.items.filter(it => states.get(it).some(s => !s.value));
-  const fromSetup = doc.items.reduce((n, it) => n + states.get(it).filter(s => s.source === 'setup').length, 0);
-  const tbdItems = doc.items.filter(it => it.tbd);
+  const notReviewed = items.filter(it => !decisions[it.key]);
+  const states = new Map(items.map(it => [it, placeholderStates(it, setup, fills[it.key])]));
+  const filled = items.filter(it => states.get(it).some(s => s.source === 'fill'));
+  const open = items.filter(it => states.get(it).some(s => !s.value));
+  const fromSetup = items.reduce((n, it) => n + states.get(it).filter(s => s.source === 'setup').length, 0);
+  const tbdItems = items.filter(it => it.tbd);
   const m = doc.meta || {};
   const docInfo = [m.status && 'status ' + m.status, m.version && 'version ' + m.version].filter(Boolean).join(', ');
 
@@ -914,8 +949,8 @@ function buildReviewMarkdown(doc, state, opts) {
   L.push('- Document: `' + doc.path + '`' + (docInfo ? ' (' + docInfo + ' at time of review)' : ''));
   L.push('- Reviewer: ' + (opts.reviewer || 'Unnamed reviewer'));
   L.push('- Date: ' + opts.date);
-  L.push('- Verdict: ' + (state.verdict || 'Not given'));
-  L.push('- Coverage: ' + decided.length + ' of ' + doc.items.length + ' items decided; ' + action.length + ' need action; ' + added.length + ' added; ' + filled.length + ' with placeholder values');
+  L.push('- Verdict: ' + (state.verdict || 'Not given') + (state.asDrafted && state.verdict === 'Approved' ? ' (approved as drafted by the reviewer: every item not flagged or changed was accepted in bulk)' : ''));
+  L.push('- Coverage: ' + decided.length + ' of ' + items.length + ' items decided; ' + action.length + ' need action; ' + added.length + ' added; ' + filled.length + ' with placeholder values');
   L.push('- Review status: Open', '');
   L.push('> For agents: apply every entry under "Action required", "Added items" and "Placeholder values" to `' + doc.path + '`, then replace each "Resolution: pending" with what you did (or why not). Set "Review status" to Applied when all entries are resolved, or Partially applied otherwise. Leave accepted items unchanged. Line numbers refer to the document as reviewed; find items by ID or text if it has changed. Follow AGENTS.md "Applying doc reviews".', '');
   if (doc.docType === 'features') L.push('> Features: set Status to `approved` for every `proposed` feature under "Accepted" (other statuses stay as they are), and to `deferred` for every "Defer". Add rows built from the lists exactly as given; write features described in words as rows with status `proposed`.', '');
@@ -1107,6 +1142,16 @@ function structuredAddedLines(a) {
 }
 
 // Builds the project setup review: the facts plus every file they must be applied to.
+// Pull request approvals for the ruleset: 0 when one person owns everything (they can't
+// approve their own pull requests), otherwise 1.
+function requiredApprovals(setup) {
+  const people = ['people.docOwner', 'people.releaseOwner', 'people.codeOwner'].map(k => normUser(setup.values[k]))
+    .concat((setup.apps || []).concat(setup.packages || []).map(a => normUser(a.owner)))
+    .filter(Boolean).map(x => x.toLowerCase());
+  const unique = [...new Set(people)];
+  return unique.length === 1 && !unique[0].includes('/') ? 0 : 1;
+}
+
 function buildSetupMarkdown(setup, opts) {
   const v = k => (setup.values[k] || '').trim();
   const apps = (setup.apps || []).filter(a => (a.name || '').trim());
@@ -1153,10 +1198,11 @@ function buildSetupMarkdown(setup, opts) {
   }
 
   const targets = [
-    ['README.md', 'Title (project name), one-line description and License. Commands table: one row per app (plus rows for packages with their own checks), named after the app; delete the unused example rows.'],
+    ['README.md', 'Title (project name), one-line description and License. Commands: one block per app (plus blocks for packages with their own checks), named after the app; delete the unused example blocks.'],
     ['AGENTS.md', 'Project name in Purpose; branch naming and commit convention under "Branches and pull requests".'],
     ['Document headers in docs/*.md', 'Set Owner to the document owner and Last updated to the date you apply this review.'],
     ['docs/GITHUB.md', 'Repository, Project and Default branch under Configuration; the App labels list (one `app:<name>` per app, plus `app:packages` and `app:repo`).'],
+    ['docs/FEATURES.md', 'Surfaces table: one row per app (S-01, S-02 …' + (appNames.length ? ': ' + appNames.map(n => '`apps/' + n + '`').join(', ') : '') + '): name, `apps/<app>` path, a short description and priority Must; add SDKs or other packages people use directly as further surfaces. Leave the users, actions, resources, journeys and features for the feature review.'],
     ['docs/TECHNICAL.md', 'Components table: one row per app and package (and infra if used) with name, path, kind and owner. API contracts table: one row per server app and its consumers. Leave stack and hosting placeholders for the team to decide.'],
     ['docs/DEPLOYMENT.md', '"Where each app runs": one row per app. Approval: release owner.' + (removeSections.length ? ' Remove the ' + removeSections.join(' and ') + ' section' + (removeSections.length > 1 ? 's' : '') + ' and matching checklist wording, since no listed app needs ' + (removeSections.length > 1 ? 'them' : 'it') + '.' : '')],
     ['docs/TESTING.md', 'Strategy table: one row per app (and infra if used).'],
@@ -1164,7 +1210,7 @@ function buildSetupMarkdown(setup, opts) {
     ['.github/workflows/ci.yml.example', 'One path filter and one job per app, named after the app; remove example jobs for apps not listed (keep the infra job only if infra/ is used); add every job to `ci-ok` needs; set the push branch to the default branch.'],
     ['.github/workflows/release.yml.example', 'One release job per app (one per platform for mobile, one per operating system for desktop), named after the app, each with environment `release-<app>`; remove example jobs for apps not listed. Creating the environments, their secrets and required reviewers (the release owner) is a human step in GitHub settings.'],
     ['.github/dependabot.yml.example', 'Keep only the ecosystems the listed apps use and point directories at their apps.'],
-    ['GitHub labels and milestones (not a file)', 'A human (or an agent explicitly authorized to change GitHub settings) runs: `bash scripts/setup-github.sh --repo ' + (repo || '<owner/repo>') + ' --apps ' + (appNames.join(',') || '<apps>') + (v('github.project') ? ' --project ' + v('github.project') : '') + '`. Record here who ran it.']
+    ['GitHub labels, milestones and ruleset (not a file)', 'A human (or an agent explicitly authorized to change GitHub settings) runs: `bash scripts/setup-github.sh --repo ' + (repo || '<owner/repo>') + ' --apps ' + (appNames.join(',') || '<apps>') + (v('github.project') ? ' --project ' + v('github.project') : '') + ' --ruleset --approvals ' + requiredApprovals(setup) + '`' + (requiredApprovals(setup) === 0 ? ' (0 approvals: one person owns everything, and GitHub does not let anyone approve their own pull requests)' : '') + '. After CI runs on pull requests, re-run with `--required-check ci-ok`. Milestones come from the docs/ROADMAP.md Milestones table; fill in its slice names first. Record here who ran it.']
   ];
   L.push('## Where to apply (' + targets.length + ')', '');
   for (const [file, what] of targets) L.push('### ' + file, '', what, '', 'Resolution: pending', '');
@@ -1223,6 +1269,7 @@ function loadState(doc) {
     }
     state.added = Array.isArray(saved.added) ? saved.added : [];
     state.verdict = saved.verdict || '';
+    state.asDrafted = !!saved.asDrafted;
   }
   doc.state = state;
   doc.stale = stale;
@@ -1444,6 +1491,7 @@ function buildQueue() {
       '<div class="verdict-row"><label for="verdict-' + di + '">Verdict</label><select class="field-select" id="verdict-' + di + '"><option value="">Not given</option>' +
       VERDICTS.map(v => '<option' + (doc.state.verdict === v ? ' selected' : '') + '>' + v + '</option>').join('') + '</select></div>' +
       '<button class="btn-review ' + btnCls + '"' + (s.total ? '' : ' disabled') + '>' + (s.total ? btnLabel : 'Nothing to review') + '</button>' +
+      (s.total && !(doc.state.asDrafted && doc.state.verdict === 'Approved' && s.done === s.total) ? '<button class="btn-card-approve" title="Accept every undecided item and set the verdict to Approved, in one step">✓ Approve as drafted</button>' : '') +
       (s.done < s.total ? '<button class="btn-card-accept" title="Accept every item you haven\'t decided on, without opening the document">✓ Accept all' + (s.done ? ' remaining' : '') + ' (' + (s.total - s.done) + ')</button>' : '');
     card.querySelector('.btn-review').addEventListener('click', () => openDocReview(di));
     const accBtn = card.querySelector('.btn-card-accept');
@@ -1454,7 +1502,16 @@ function buildQueue() {
       saveState(doc);
       buildQueue();
     });
-    card.querySelector('select').addEventListener('change', e => { doc.state.verdict = e.target.value; saveState(doc); });
+    const apBtn = card.querySelector('.btn-card-approve');
+    if (apBtn) apBtn.addEventListener('click', () => {
+      const open = s.total - s.done;
+      const ph = docPlaceholderCounts(doc).open;
+      if (!confirm('Approve ' + doc.path + ' as drafted? ' + (open ? 'The ' + open + ' undecided item' + (open !== 1 ? 's are' : ' is') + ' accepted and ' : '') + 'the verdict becomes Approved. Items you flagged or changed stay as they are.' + (ph ? ' ' + ph + ' open placeholder' + (ph !== 1 ? 's stay' : ' stays') + ' unfilled.' : ''))) return;
+      approveAsDrafted(doc.items, doc.state);
+      saveState(doc);
+      buildQueue();
+    });
+    card.querySelector('select').addEventListener('change', e => { doc.state.verdict = e.target.value; if (e.target.value !== 'Approved') doc.state.asDrafted = false; saveState(doc); });
     grid.appendChild(card);
   });
   showScreen('queue-screen');
@@ -1633,9 +1690,36 @@ function highlightWith(text, ctx) {
   });
 }
 
+// Review order: 'decisions' (items needing a decision first) or 'document'. Saved per browser.
+const ORDER_KEY = STORE_PREFIX + 'review-order';
+let reviewOrder = localStorage.getItem(ORDER_KEY) === 'document' ? 'document' : 'decisions';
+
+// Reorders doc.items for review. Decisions are keyed by item.key, so their order is free;
+// review files sort by line themselves.
+function applyReviewOrder(doc) {
+  const r = orderItems(doc.items, reviewOrder, setup, it => doc.state.fills[it.key]);
+  doc.items = r.items; doc.decisionCount = r.decisionCount;
+}
+
+function updateOrderButton() {
+  const b = $('rev-order-btn');
+  b.textContent = reviewOrder === 'decisions' ? 'Decisions first' : 'Document order';
+  b.setAttribute('aria-pressed', reviewOrder === 'decisions');
+}
+
+$('rev-order-btn').addEventListener('click', () => {
+  reviewOrder = reviewOrder === 'decisions' ? 'document' : 'decisions';
+  try { localStorage.setItem(ORDER_KEY, reviewOrder); } catch (e) {}
+  const doc = docs[currentDocIdx], key = doc.items[currentItemIdx] && doc.items[currentItemIdx].key;
+  applyReviewOrder(doc);
+  currentItemIdx = Math.max(0, doc.items.findIndex(it => it.key === key));
+  updateOrderButton(); buildReviewSidebar(); renderItem();
+});
+
 function openDocReview(di) {
   currentDocIdx = di; currentItemIdx = 0;
   const doc = docs[di];
+  applyReviewOrder(doc); updateOrderButton();
   const firstOpen = doc.items.findIndex(it => !doc.state.decisions[it.key]);
   if (firstOpen > 0) currentItemIdx = firstOpen;
   $('rev-title').textContent = doc.path;
@@ -1653,8 +1737,16 @@ function itemHasOpenPlaceholders(doc, item) {
 function buildReviewSidebar() {
   const sb = $('sidebar'); sb.innerHTML = '';
   const doc = docs[currentDocIdx]; let lastSec = null;
+  const nDecide = reviewOrder === 'decisions' ? doc.decisionCount || 0 : 0;
   doc.items.forEach((item, idx) => {
-    if (item.section !== lastSec) {
+    if (idx === 0 && nDecide) {
+      const h = document.createElement('div'); h.className = 'sidebar-section';
+      h.textContent = 'Needs a decision (' + nDecide + ')';
+      h.title = 'Open placeholders, TBDs, open decisions and proposed ADRs';
+      sb.appendChild(h); lastSec = undefined;
+    }
+    if (idx === nDecide && nDecide) lastSec = null;
+    if (idx >= nDecide && item.section !== lastSec) {
       const h = document.createElement('div'); h.className = 'sidebar-section';
       const name = document.createElement('span'); name.className = 'sec-name';
       name.textContent = item.section || 'Top'; name.title = item.section;

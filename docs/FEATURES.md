@@ -1,6 +1,6 @@
 # Features
 
-Status: Draft | Owner: @Bankole2000 | Version: 0.3 | Last updated: 2026-11-26
+Status: Draft | Owner: @Bankole2000 | Version: 0.4 | Last updated: 2026-11-26
 References: PRD.md (requirements FR-, business rules BR-), platform-core.md section 5 (feature areas F1 to F22), ROADMAP.md (milestones)
 
 ## How this file works
@@ -14,6 +14,7 @@ This file is the list of everything the product lets someone do. It feeds the PR
 6. **IDs are stable:** never renumber or reuse them. Mark removed items `out-of-scope` instead of deleting them. `FT-` is used for features because `F1` to `F22` are already the feature areas in platform-core.md.
 7. Only humans approve. Agents add new ideas as `proposed` and never change a status.
 8. **Adding features:** open this file in `tools/doc-reviewer.html` and use "+ Add". "Build from lists" picks the user, action, resource, surfaces and journey from dropdowns ("+ New" adds a list item on the spot); "Describe in words" takes a sentence that an agent turns into a row.
+9. **Generated columns:** the Requirements column (from the PRD), the journeys' Milestone column (from ROADMAP.md) and the coverage matrix are written by `node scripts/check-features.mjs --write`. Don't edit them by hand; CI fails when they are out of date.
 
 ## Users
 | ID | Name | Kind | Description | Priority |
@@ -86,7 +87,7 @@ Where a feature is offered: an app, an SDK, the api or a server command. Not to 
 | S-10 | Server command line | apps/api | Commands run on the server by the admin, such as a password reset. | Must |
 
 ## Journeys
-Milestone is the current ROADMAP.md milestone; it changes only through a ROADMAP change.
+The Milestone column is generated from ROADMAP.md, where each milestone lists the journeys it delivers.
 
 | ID | Name | Main user | Goal | Features, in order | Milestone |
 |---|---|---|---|---|---|
@@ -95,9 +96,10 @@ Milestone is the current ROADMAP.md milestone; it changes only through a ROADMAP
 | J-03 | Give an app or agent access | U-01 | Issue credentials and stay in control of them. | FT-016, FT-017, FT-054, FT-018, FT-019, FT-020, FT-055, FT-021, FT-022, FT-023, FT-024 | M1 |
 | J-04 | Trace changes | U-01 | See who changed what, and when. | FT-025, FT-026, FT-027 | M1 |
 | J-05 | Use reference data | U-02 | Read shared data instead of embedding a copy. | FT-028, FT-029, FT-030, FT-031, FT-060, FT-061 | M2 |
-| J-06 | Report metrics | U-02 | Send events without harming the app. | FT-032, FT-033, FT-034, FT-035 | M3 |
+| J-06 | Report metrics | U-02 | Send events without harming the app. | FT-032, FT-035 | M3 |
 | J-07 | Watch project health | U-01 | See whether each project is up and used. | FT-036, FT-037, FT-038, FT-039, FT-040, FT-041, FT-058 | M3 |
 | J-08 | Track costs | U-01 | Know what each project costs per month. | FT-042, FT-043, FT-052, FT-053, FT-044, FT-045, FT-046, FT-047, FT-048, FT-059 | M4 |
+| J-10 | Keep the service healthy | U-04 | Protect the service from overload and keep stored events within their retention period. | FT-033, FT-034 | M5 |
 | J-09 | Later | — | Features of later phases. | FT-049, FT-050, FT-051 | — |
 
 ## Features
@@ -137,8 +139,8 @@ Surfaces "S-01, S-02, S-03" is the dashboard everywhere.
 | FT-030 | U-02 Consumer app | A-09 searches | R-09 Reference dataset | any valid key or token | S-04, S-05, S-06, S-07 | Matching entries are returned. | Must | FT-028 | J-05 | FR-020 | approved |
 | FT-031 | U-01 Admin | A-03 edits | R-09 Reference dataset | entries of one dataset | S-01, S-02, S-03 | The new value is served and the dataset version is higher. | Must | FT-028 | J-05 | FR-022 | approved |
 | FT-032 | U-02 Consumer app | A-13 sends | R-10 Event | batches up to the maximum size (OD-002), each event with a client ID and the platform it ran on | S-04, S-05, S-06, S-07 | Events are stored once per project and ID, against the key's project and component; an oversized batch is rejected. | Must | FT-016 | J-06 | FR-023, FR-024, FR-040, FR-042 | approved |
-| FT-033 | U-04 System | A-15 limits | R-05 API key | per key and per token | S-04 | Past the limit, requests get 429 with `Retry-After`; other keys are not affected. | Must | FT-016 | J-06 | FR-025 | approved |
-| FT-034 | U-04 System | A-20 prunes | R-10 Event | older than the retention period (D3) | S-04 | Old events are removed or rolled up by a scheduled job. | Should | FT-032 | J-06 | FR-026 | approved |
+| FT-033 | U-04 System | A-15 limits | R-05 API key | per key and per token | S-04 | Past the limit, requests get 429 with `Retry-After`; other keys are not affected. | Must | FT-016 | J-10 | FR-025 | approved |
+| FT-034 | U-04 System | A-20 prunes | R-10 Event | older than the retention period (D3) | S-04 | Old events are removed or rolled up by a scheduled job. | Should | FT-032 | J-10 | FR-026 | approved |
 | FT-035 | U-02 Consumer app | A-13 sends | R-10 Event | Platform Core about itself, one component per app | S-04, S-05 | Platform Core appears in its own dashboard with live events. | Should | FT-032 | J-06 | FR-034 | approved |
 | FT-036 | U-01 Admin | A-02 views | R-11 Event feed | per project, live | S-01, S-02, S-03 | New events appear without a manual reload. | Must | FT-032 | J-07 | FR-027 | approved |
 | FT-037 | U-01 Admin | A-08 filters | R-11 Event feed | by event type, component and platform | S-01, S-02, S-03 | Only matching events show. | Must | FT-036 | J-07 | FR-027, FR-041, FR-042 | approved |
@@ -156,18 +158,18 @@ Surfaces "S-01, S-02, S-03" is the dashboard everywhere.
 | FT-049 | U-04 System | A-21 alerts | R-12 Project metrics | when a project stops pinging or errors spike (F19) | S-01, S-02, S-03 | The admin is notified. | Could | FT-039 | J-09 | — | deferred |
 | FT-050 | U-05 Visitor | A-02 views | R-15 Status page | public projects only (F17) | S-01 | The page shows whether the project is up. | Could | FT-039 | J-09 | — | deferred |
 | FT-051 | U-03 Script or agent | A-02 views | R-01 Project | through the MCP server (F20) | S-09 | The agent can list and read projects. | Could | FT-024 | J-09 | — | deferred |
-| FT-052 | U-01 Admin | A-03 edits | R-04 Cost | every field, including setting or clearing the end date | S-01, S-02, S-03 | Edited values show after reload, burn is recalculated and the change is audited. | Must | FT-042 | J-08 | — (new) | approved |
-| FT-053 | U-01 Admin | A-05 removes | R-04 Cost | a cost entered by mistake | S-01, S-02, S-03 | The cost leaves the list and the burn; the audit trail keeps a record of it. | Should | FT-042 | J-08 | — (new) | approved |
-| FT-054 | U-01 Admin | A-03 edits | R-05 API key | name and expiry only; environment, scopes and component stay fixed | S-01, S-02, S-03 | The new name and expiry show in the list; past the new expiry the key is rejected. | Should | FT-016 | J-03 | — (new) | approved |
-| FT-055 | U-01 Admin | A-03 edits | R-06 Personal access token | name and expiry only; scopes stay fixed | S-01, S-02, S-03 | The new name and expiry show in the list; past the new expiry the token is rejected. | Should | FT-019 | J-03 | — (new) | approved |
-| FT-056 | U-03 Script or agent | A-03 edits | R-01 Project | within the token's or key's write scopes (D8) | S-04 | With a project write scope the edit is saved and audited with the agent as actor; without it the request gets 403. | Should | FT-024 | J-02 | — (new) | approved |
-| FT-057 | U-03 Script or agent | A-01 creates | R-03 Link | within the token's or key's write scopes (D8) | S-04 | With a link write scope the link is created and audited with the agent as actor; without it the request gets 403. | Should | FT-010, FT-024 | J-02 | — (new) | approved |
-| FT-058 | U-03 Script or agent | A-02 views | R-12 Project metrics | within the token's or key's read scopes (D8) | S-04 | The agent gets the same figures the dashboard shows. | Should | FT-024, FT-038 | J-07 | — (new) | approved |
-| FT-059 | U-03 Script or agent | A-02 views | R-04 Cost | costs and burn, within the token's or key's read scopes (D8) | S-04 | The agent gets the same costs and burn the dashboard shows. | Should | FT-024, FT-043 | J-08 | — (new) | approved |
-| FT-060 | U-01 Admin | A-01 creates | R-09 Reference dataset | a new entry in one dataset | S-01, S-02, S-03 | The entry is served and the dataset version is higher. | Should | FT-031 | J-05 | — (new) | approved |
-| FT-061 | U-01 Admin | A-04 archives | R-09 Reference dataset | one entry; never deleted, because apps may have stored its code | S-01, S-02, S-03 | The entry leaves lists and search; a request by its code still answers and marks it deprecated; the dataset version is higher. | Should | FT-031 | J-05 | — (new) | approved |
-| FT-062 | U-01 Admin | A-03 edits | R-16 Admin account | password, with the current password | S-01, S-02, S-03 | The new password works, the old one doesn't, and every other session ends. | Should | FT-001 | J-01 | — (new) | approved |
-| FT-063 | U-01 Admin | A-03 edits | R-16 Admin account | password reset without the old password, run on the server | S-10 | The command sets a new password and ends every session. | Must | — | J-01 | — (new) | approved |
+| FT-052 | U-01 Admin | A-03 edits | R-04 Cost | every field, including setting or clearing the end date | S-01, S-02, S-03 | Edited values show after reload, burn is recalculated and the change is audited. | Must | FT-042 | J-08 | FR-043 | approved |
+| FT-053 | U-01 Admin | A-05 removes | R-04 Cost | a cost entered by mistake | S-01, S-02, S-03 | The cost leaves the list and the burn; the audit trail keeps a record of it. | Should | FT-042 | J-08 | FR-044 | approved |
+| FT-054 | U-01 Admin | A-03 edits | R-05 API key | name and expiry only; environment, scopes and component stay fixed | S-01, S-02, S-03 | The new name and expiry show in the list; past the new expiry the key is rejected. | Should | FT-016 | J-03 | FR-045 | approved |
+| FT-055 | U-01 Admin | A-03 edits | R-06 Personal access token | name and expiry only; scopes stay fixed | S-01, S-02, S-03 | The new name and expiry show in the list; past the new expiry the token is rejected. | Should | FT-019 | J-03 | FR-045 | approved |
+| FT-056 | U-03 Script or agent | A-03 edits | R-01 Project | within the token's or key's write scopes (D8) | S-04 | With a project write scope the edit is saved and audited with the agent as actor; without it the request gets 403. | Should | FT-024 | J-02 | FR-046 | approved |
+| FT-057 | U-03 Script or agent | A-01 creates | R-03 Link | within the token's or key's write scopes (D8) | S-04 | With a link write scope the link is created and audited with the agent as actor; without it the request gets 403. | Should | FT-010, FT-024 | J-02 | FR-046 | approved |
+| FT-058 | U-03 Script or agent | A-02 views | R-12 Project metrics | within the token's or key's read scopes (D8) | S-04 | The agent gets the same figures the dashboard shows. | Should | FT-024, FT-038 | J-07 | FR-046 | approved |
+| FT-059 | U-03 Script or agent | A-02 views | R-04 Cost | costs and burn, within the token's or key's read scopes (D8) | S-04 | The agent gets the same costs and burn the dashboard shows. | Should | FT-024, FT-043 | J-08 | FR-046 | approved |
+| FT-060 | U-01 Admin | A-01 creates | R-09 Reference dataset | a new entry in one dataset | S-01, S-02, S-03 | The entry is served and the dataset version is higher. | Should | FT-031 | J-05 | FR-047 | approved |
+| FT-061 | U-01 Admin | A-04 archives | R-09 Reference dataset | one entry; never deleted, because apps may have stored its code | S-01, S-02, S-03 | The entry leaves lists and search; a request by its code still answers and marks it deprecated; the dataset version is higher. | Should | FT-031 | J-05 | FR-047 | approved |
+| FT-062 | U-01 Admin | A-03 edits | R-16 Admin account | password, with the current password | S-01, S-02, S-03 | The new password works, the old one doesn't, and every other session ends. | Should | FT-001 | J-01 | FR-048 | approved |
+| FT-063 | U-01 Admin | A-03 edits | R-16 Admin account | password reset without the old password, run on the server | S-10 | The command sets a new password and ends every session. | Must | — | J-01 | FR-049 | approved |
 
 ## Coverage matrix
 Generated from the Features table (approved and proposed features only); don't edit it by hand. Each cell lists the actions a user can take on a resource. An empty cell is not an error, but it is worth a look.
@@ -197,4 +199,4 @@ These PRD items are not user + action + resource, so they stay in the PRD and ar
 - NFR-001 to NFR-009 are quality targets that apply across features.
 
 ## Approval
-Reviewed by @Bankole2000 on 2026-11-26 (docs/reviews/2026-11-26-FEATURES.md), verdict Approved with changes: every proposed feature approved; FT-049 to FT-051 stay deferred.
+Reviewed by @Bankole2000 on 2026-11-26 (docs/reviews/2026-11-26-FEATURES.md), verdict Approved with changes: every proposed feature approved; FT-049 to FT-051 stay deferred. Version 0.4 adds journey J-10 (FT-033 and FT-034 move there from J-06, so they stay in M5 as ROADMAP plans) and the generated Requirements and Milestone columns; it is in review.
