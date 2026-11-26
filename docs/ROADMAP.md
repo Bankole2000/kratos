@@ -1,6 +1,6 @@
 # Development Roadmap
 
-Status: In review | Owner: @Bankole2000 | Version: 1.4 | Last updated: 2026-11-26
+Status: In review | Owner: @Bankole2000 | Version: 1.5 | Last updated: 2026-11-26
 References: FEATURES.md, PRD.md, DESIGN.md, TECHNICAL.md, TESTING.md, platform-core.md section 7
 
 ## Milestones
@@ -38,6 +38,7 @@ Only M0 is planned in detail. Later milestones are broken down once the previous
 | TASK-013 | Bruno collection for the api, generated from the OpenAPI spec and curated, with a drift check | api | — | NFR-001 | TC-036 | M0 | TASK-004 | Medium | #20 |
 | TASK-014 | api default port 18080 instead of 8080 | api | — | — | TC-000 | M0 | None | Medium | #24 |
 | TASK-015 | CORS on the api for the web and Tauri dashboard origins (`API_CORS_ORIGINS`) | api | — | FR-035 | TC-000 | M0 | None | High | #26 |
+| TASK-016 | Features list pilot: `docs/FEATURES.md` with users, actions, resources, platforms, journeys and features drawn from the PRD | repo | — | FR-001 to FR-042 | — | M1 | None | High | #39 |
 
 ## Planning rules
 - Plan only the next useful milestone in detail; split large tasks.
@@ -53,4 +54,4 @@ Only M0 is planned in detail. Later milestones are broken down once the previous
 - Reconcile scope changes with the approved PRD before generating new tasks.
 
 ## Approval
-Approved by @Bankole2000 on 2026-11-25, revision 1.0, to start building. Approved as drafted without an item-by-item review; sections are revisited when the milestone that needs them is planned, and open TBDs stay open decisions. Revision 1.1 adds project components (PRD OD-007), approved as drafted by @Bankole2000 on 2026-11-25. Revision 1.4 makes milestones sets of journeys (Journeys column), adds PRD FR-043 to FR-049 to the exit criteria and a Features column to the work breakdown; it is in review.
+Approved by @Bankole2000 on 2026-11-25, revision 1.0, to start building. Approved as drafted without an item-by-item review; sections are revisited when the milestone that needs them is planned, and open TBDs stay open decisions. Revision 1.1 adds project components (PRD OD-007), approved as drafted by @Bankole2000 on 2026-11-25. Revision 1.5 makes milestones sets of journeys (Journeys column), adds PRD FR-043 to FR-049 to the exit criteria and a Features column to the work breakdown; it is in review.
