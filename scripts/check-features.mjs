@@ -232,7 +232,10 @@ const reqCol = lists.features.header ? lists.features.header.indexOf('Requiremen
 const stale = []
 if (reqCol >= 0 && prdHasFeatures) {
   for (const r of features) {
-    const want = (requirementsOf.get(r.obj.ID) ?? []).join(', ') || '— (new)'
+    // "— (new)" marks a live feature still waiting for a requirement; deferred ones need none.
+    const want =
+      (requirementsOf.get(r.obj.ID) ?? []).join(', ') ||
+      (['approved', 'proposed'].includes(r.obj.Status) ? '— (new)' : '—')
     if (r.cells[reqCol] !== want) {
       stale.push(r.obj.ID)
       const cells = [...r.cells]
