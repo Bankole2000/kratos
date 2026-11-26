@@ -62,6 +62,7 @@ tools/, scripts/     Repository tooling
 App, package and infra folders are created by M0 tasks, not shipped empty. The workspace tool (pnpm/npm workspaces, Turborepo, Nx, uv, Gradle, …) is chosen in `docs/TECHNICAL.md` (ADR-001), and the infrastructure tool in ADR-002.
 
 ## Conventions
+- **Features:** `docs/FEATURES.md` lists what the product lets each user do, and feeds the PRD. `node scripts/check-features.mjs` checks its references, the PRD's links to it and the milestones (ROADMAP.md lists the journeys each one delivers); `--write` regenerates its generated parts. CI runs it.
 - **Placeholders:** text wrapped in double curly braces marks something to fill in. Run `bash scripts/check-placeholders.sh` to list any that remain (`templates/` and `docs/reviews/` are skipped). Write `TBD` for genuine unknowns; TBD is never an approved decision.
 - **Document status:** every document in `docs/` has a header with Status, Owner, Version and Last updated. Status moves Draft → In review → Approved → Superseded. Material changes to an Approved document return it to In review and bump the version.
 - **IDs:** requirement and artifact IDs (`OBJ-`, `FR-`, `NFR-`, `BR-`, `FLOW-`, `UI-`, `API-`, `ADR-`, `TC-`, `TASK-`) are stable. Never renumber or reuse an ID; mark removed items as deprecated instead.
