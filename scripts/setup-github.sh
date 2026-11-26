@@ -319,10 +319,28 @@ if [ -n "$PROJECT$PROJECT_FROM" ]; then
         CREATED+=("Project field $name")
       fi
     done
-    STATUS_OPTIONS=$(gh project field-list "$PROJECT" --owner "$OWNER" --format json --jq '.fields[] | select(.name == "Status") | .options[].name' 2>/dev/null || true)
-    for opt in "In Review" "Blocked"; do
-      grep -qxF "$opt" <<< "$STATUS_OPTIONS" || MANUAL+=("Project #$PROJECT: add the \"$opt\" option to the Status field (Project settings → Status; the CLI can't edit it)")
-    done
+    # Status needs Todo, In Progress, In Review, Blocked and Done (docs/GITHUB.md). The API
+    # replaces the whole option list, which would clear the Status of existing items, so
+    # missing options are added only while the Project has no items.
+    STATUS_INFO=$(gh_retry project field-list "$PROJECT" --owner "$OWNER" --format json --jq '.fields[] | select(.name == "Status") | .id, (.options[].name)')
+    STATUS_ID=$(head -n1 <<< "$STATUS_INFO")
+    STATUS_OPTIONS=$(tail -n +2 <<< "$STATUS_INFO")
+    MISSING=()
+    for opt in "In Review" "Blocked"; do grep -qxF "$opt" <<< "$STATUS_OPTIONS" || MISSING+=("$opt"); done
+    if [ ${#MISSING[@]} -gt 0 ]; then
+      ITEMS=$(gh_retry project view "$PROJECT" --owner "$OWNER" --format json --jq '.items.totalCount')
+      if [ "$ITEMS" = "0" ] && [ -n "$STATUS_ID" ]; then
+        OPTS='{name:"Todo",color:GRAY,description:"Ready to be picked up once approved"},{name:"In Progress",color:YELLOW,description:"Being worked on"},{name:"In Review",color:BLUE,description:"PR open for review"},{name:"Blocked",color:RED,description:"Waiting on something; see the latest comment"},{name:"Done",color:GREEN,description:"Merged or closed"}'
+        change api graphql -f query="mutation(\$f:ID!){updateProjectV2Field(input:{fieldId:\$f,singleSelectOptions:[$OPTS]}){projectV2Field{... on ProjectV2SingleSelectField{id}}}}" -f f="$STATUS_ID"
+        UPDATED+=("Project #$PROJECT Status options: Todo, In Progress, In Review, Blocked, Done")
+      else
+        for opt in "${MISSING[@]}"; do
+          MANUAL+=("Project #$PROJECT: add the \"$opt\" option to the Status field (Project settings → Status); not done automatically because the Project already has items")
+        done
+      fi
+    else
+      SKIPPED+=("Project #$PROJECT Status options")
+    fi
   fi
 fi
 
