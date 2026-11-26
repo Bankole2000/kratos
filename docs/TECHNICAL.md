@@ -1,6 +1,6 @@
 # Technical Specification
 
-Status: Approved | Owner: @Bankole2000 | Version: 1.3 | Last updated: 2026-11-26
+Status: In review | Owner: @Bankole2000 | Version: 1.4 | Last updated: 2026-11-26
 References: PRD.md, DESIGN.md, platform-core.md (guiding principles, SDK specification)
 
 ## Architecture overview
@@ -38,6 +38,13 @@ One row per deployable app in `apps/`, per shared package in `packages/`, per pu
 | sdk-rust | sdks/rust | Published library | Rust; can reuse packages/types | crates.io (name in D6) | @Bankole2000 | FR-033 |
 | sdk-python (later) | sdks/python | Published library | Python | PyPI | @Bankole2000 | F12 |
 | infra | infra/ | Infrastructure | TBD (ADR-002, depends on D1) | TBD | @Bankole2000 | — |
+
+## Local development
+Defaults that avoid the usual clashes on a developer machine (README, Local infrastructure, has the commands):
+- **Ports:** api 18080, web (Nuxt dev) 13000, Tauri dev server 1420. 8080 and 3000 are often taken by other local tools.
+- **Host:** `127.0.0.1`, not `localhost`, in URLs and bind addresses. `localhost` can resolve to IPv6 first, which added about two seconds to every database connection on Windows; Nuxt's dev server listens on `[::1]`, so the browser opens it as `localhost`.
+- **Database:** Postgres in `docker-compose.yml`, trust authentication on `127.0.0.1` for local use and CI only, so no password sits in the repository. Personal extra services go in the gitignored `docker-compose.override.yml`.
+- **CORS:** the api reads allowed origins from `API_CORS_ORIGINS`, defaulting to the web dev server and the Tauri origins.
 
 ## Repository and workspace
 - Monorepo tooling: see ADR-001. A **Cargo workspace** holds `apps/api`, `apps/mcp`, `packages/types`, `sdks/rust` and `apps/app/src-tauri`. A **pnpm workspace** holds `apps/web`, `apps/app`, `packages/ui`, `packages/api-client-ts` and `sdks/ts`. `sdks/dart` is a standalone Dart package.
@@ -185,4 +192,4 @@ Decisions marked Accepted were made in platform-core.md and need only confirmati
 
 ## Open decisions and approval
 Open: D1, D3 to D8 (platform-core.md section 8), OD-001 to OD-004 (PRD.md), ADR-002, ADR-008, ADR-010, and the installed-client support window.
-Approval: Approved by @Bankole2000 on 2026-11-25, revision 1.0, to start building. Approved as drafted without an item-by-item review; sections are revisited when the milestone that needs them is planned, and open TBDs stay open decisions. Revision 1.1 adds project components (PRD OD-007), approved as drafted by @Bankole2000 on 2026-11-25. Revision 1.2 records the Vuetify 4 decision (PRD OD-008); its review is pending. Revision 1.3: approved as drafted by @Bankole2000 on 2026-11-26 (docs/reviews/2026-11-26-TECHNICAL.md), with hosting on Railway (D1) and a 3-month support window.
+Approval: Approved by @Bankole2000 on 2026-11-25, revision 1.0, to start building. Approved as drafted without an item-by-item review; sections are revisited when the milestone that needs them is planned, and open TBDs stay open decisions. Revision 1.1 adds project components (PRD OD-007), approved as drafted by @Bankole2000 on 2026-11-25. Revision 1.2 records the Vuetify 4 decision (PRD OD-008); its review is pending. Revision 1.3: approved as drafted by @Bankole2000 on 2026-11-26 (docs/reviews/2026-11-26-TECHNICAL.md), with hosting on Railway (D1) and a 3-month support window. Revision 1.4 adds the Local development section (ports, host, database, CORS); it is in review.
