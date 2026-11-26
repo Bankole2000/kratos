@@ -1,6 +1,6 @@
 # Product Requirements Document
 
-Status: In review | Owner: @Bankole2000 | Version: 1.3 | Last updated: 2026-11-26
+Status: Approved | Owner: @Bankole2000 | Version: 1.4 | Last updated: 2026-11-26
 References: FEATURES.md (users, resources, surfaces, journeys and features FT-), platform-core.md (project overview, guiding principles and SDK specification)
 
 FEATURES.md feeds this document. When features are approved or changed there, the requirements below are updated to match, and each requirement lists the features it covers.
@@ -31,9 +31,9 @@ It is not an identity provider (apps handle their own end users), not a project-
 - **Deferred**: MCP server (v2 local, v3 remote), public status pages (v2).
 
 ## Objectives and success criteria
-- OBJ-001: One place to see the portfolio. Success: every active project is registered, with its links and costs, within TBD weeks of launch, and the portfolio overview shows status, monthly burn and last activity for all of them.
+- OBJ-001: One place to see the portfolio. Success: every active project is registered, with its links and costs, within a dynamically configurable time period of launch, and the portfolio overview shows status, monthly burn and last activity for all of them.
 - OBJ-002: No app embeds its own reference data. Success: every new app started after launch reads reference data from Platform Core; existing apps migrate as they are next changed.
-- OBJ-003: Apps report metrics without being harmed by it. Success: at least TBD apps report metrics through an SDK, Platform Core reports its own metrics through its own SDK, and no app crash or slowdown is traced to an SDK.
+- OBJ-003: Apps report metrics without being harmed by it. Success: at least 2 apps report metrics through an SDK, Platform Core reports its own metrics through its own SDK, and no app crash or slowdown is traced to an SDK.
 
 ## MVP scope and functional requirements
 Priority uses MoSCoW: Must, Should, Could, Won't. IDs are stable: never renumber or reuse them; mark removed requirements as deprecated. The Features column lists the FEATURES.md features (FT-) each requirement covers; every approved feature appears in at least one requirement, and `node scripts/check-features.mjs` checks these links. A requirement that is not a feature (an SDK, or the dashboard on every platform) writes —. The Area column links each requirement to the feature areas (F1, F2, …) in platform-core.md section 5. Platforms: All = web dashboard and Tauri app (desktop and mobile), through the API.
@@ -66,9 +66,9 @@ Priority uses MoSCoW: Must, Should, Could, Won't. IDs are stable: never renumber
 | FR-024 | FT-032 | F7 | Each event carries a client-generated ID; the server stores an event only once per project and ID. | API | Sending the same batch twice stores each event once. | Must |
 | FR-025 | FT-033 | F7 | Requests are rate limited per key and per token. | API | Past the limit, requests get 429 with a `Retry-After` header; other keys are not affected. | Must |
 | FR-026 | FT-034 | F7 | The raw event retention period is configurable (D3). | API | Events older than the retention period are removed or rolled up by a scheduled job. | Should |
-| FR-027 | FT-036, FT-037 | F8 | Each project has a live event feed, filterable by event type. | All | New events appear without a manual reload (within TBD seconds); filtering by type shows only that type. | Must |
+| FR-027 | FT-036, FT-037 | F8 | Each project has a live event feed, filterable by event type. | All | New events appear without a manual reload, within the configurable feed refresh interval (`EVENT_FEED_REFRESH_SECONDS`, default 5); filtering by type shows only that type. | Must |
 | FR-028 | FT-038 | F8 | Each project shows event volume charts for the last 7 and 30 days. | All | The chart totals match the stored event counts for those days. | Must |
-| FR-029 | FT-039 | F8 | Each project shows its monthly revenue total, latest errors and last ping. | All | The values match the stored events; a project with no ping in TBD minutes is marked as not reporting. | Must |
+| FR-029 | FT-039 | F8 | Each project shows its monthly revenue total, latest errors and last ping. | All | The values match the stored events; a project with no ping within its configurable "not reporting" period (per project; default 15 minutes) is marked as not reporting. | Must |
 | FR-030 | FT-040 | F8 | The portfolio overview lists all projects with status, monthly burn and last activity. | All | Every unarchived project appears with these three values. | Must |
 | FR-031 | — | F9 | A TypeScript SDK, published to npm, implements the SDK specification (platform-core.md section 6) for browser and Node apps. | SDK | The SDK conformance tests (TESTING.md) pass in a browser and in Node. | Must |
 | FR-032 | — | F10 | A Dart SDK, published to pub.dev, implements the same SDK specification for Flutter apps. | SDK | The SDK conformance tests pass in a Flutter test app. | Should |
@@ -80,7 +80,7 @@ Priority uses MoSCoW: Must, Should, Could, Won't. IDs are stable: never renumber
 | FR-038 | FT-014, FT-015 | F2 | A link can optionally be tagged with one of its project's components. | All | The tag is shown on the link; filtering links by component shows only that component's links and untagged links stay visible under the project; a component from another project is rejected. | Must |
 | FR-039 | FT-047, FT-048 | F3 | A cost can optionally be tagged with one of its project's components. Project burn and one-off totals include every cost, tagged or not. | All | Burn and one-off totals are the same before and after tagging; the cost list can be filtered by component and shows a per-component subtotal; a component from another project is rejected. | Must |
 | FR-040 | FT-016, FT-032 | F4, F7 | A project key can optionally be tied to one of its project's components. Events sent with that key are stored against that component; events sent with a key that has no component have none. | All | Events sent with a component's key appear under that component; events from a project-wide key appear under the project only; a component from another project is rejected; the component of an existing key cannot be changed. | Must |
-| FR-041 | FT-037, FT-039, FT-041 | F8 | The event feed, volume charts, revenue, latest errors and last ping can be filtered by component, and the project overview shows the last ping of each active component. | All | With the filter set, every figure counts only that component's events; a component with no ping in TBD minutes is marked as not reporting while the others are not. | Must |
+| FR-041 | FT-037, FT-039, FT-041 | F8 | The event feed, volume charts, revenue, latest errors and last ping can be filtered by component, and the project overview shows the last ping of each active component. | All | With the filter set, every figure counts only that component's events; a component with no ping within its project's "not reporting" period is marked as not reporting while the others are not. | Must |
 | FR-042 | FT-032, FT-037 | F7, F9 | SDKs attach the platform they run on (`web`, `ios`, `android`, `windows`, `macos`, `linux`, `server`) to every event, and the event feed can be filtered by platform. | API, SDKs | An event sent from each platform is stored with the matching value; an event without one is stored with none; the feed filter shows only the chosen platform. | Should |
 | FR-043 | FT-052 | F3 | The admin can edit every field of a cost, including setting or clearing its end date. | All | Edited values show after reload; monthly burn is recalculated; the change appears in the audit trail. | Must |
 | FR-044 | FT-053 | F3 | The admin can remove a cost entered by mistake. | All | The cost leaves the list and the burn; the audit trail keeps a record of it. | Should |
@@ -131,7 +131,7 @@ Later phases from platform-core.md section 5. Their IDs are reserved there.
 - NFR-002: Reference data performance. Cached reference reads are answered within TBD ms at p95 on the production host.
 - NFR-003: Ingestion performance. A batch of the maximum size is accepted within TBD ms at p95; heavy ingestion does not slow reference reads (principle 5).
 - NFR-004: Credential security. Keys and tokens are stored only as SHA-256 hashes; the admin password is stored as an Argon2 hash; secrets and personal data never appear in logs (keys are logged by prefix only).
-- NFR-005: Compatibility. Released SDK and app versions keep working until the end of a published support window (TBD months; see TECHNICAL.md, API compatibility).
+- NFR-005: Compatibility. Released SDK and app versions keep working until the end of a published support window (3 months; see TECHNICAL.md, API compatibility).
 - NFR-006: SDK safety. SDKs never throw into app code, never block the main thread, cap their offline queue, and drop data rather than crash when Platform Core is unreachable.
 - NFR-007: Mobile widths. Every dashboard screen is usable at a viewport width of 360 px.
 - NFR-008: Accessibility. Target TBD (proposed: WCAG 2.2 AA for the dashboard).
@@ -148,7 +148,7 @@ Later phases from platform-core.md section 5. Their IDs are reserved there.
 ## Open decisions
 Decisions D1 to D8 are tracked in platform-core.md section 8 (D2 is decided: SQLx only). Additional decisions raised while drafting:
 - OD-001: Are status transitions restricted (for example, `abandoned` → `active`), or can any status follow any other? Owner: @Bankole2000. Needed by: M1.
-- OD-002: Maximum events per batch (N) and maximum request size. Owner: @Bankole2000. Needed by: M3.
+- OD-002: Maximum events per batch (N) and maximum request size. **Decided 2026-11-26: both are configurable** (`INGEST_MAX_BATCH_EVENTS`, default 500; `INGEST_MAX_REQUEST_BYTES`, default 1 MB), following the owner's rule that a TBD which can be a setting is configurable.
 - OD-003: Source for phone codes (ITU-T E.164 assignments or a maintained dataset such as libphonenumber metadata). Owner: @Bankole2000. Needed by: M2.
 - OD-004: Do agent keys get their own prefix (for example, `pc_ak_`) so they are recognizable in logs? Owner: @Bankole2000. Needed by: M1, together with D8.
 - OD-005: Nuxt version for `apps/web`. **Decided 2026-11-25: Nuxt 4**, since Nuxt 3 no longer gets security fixes. This replaces "Nuxt 3" in platform-core.md section 2.
@@ -157,4 +157,4 @@ Decisions D1 to D8 are tracked in platform-core.md section 8 (D2 is decided: SQL
 - OD-008: Vuetify version for `packages/ui` (and so for `apps/web` and `apps/app`). **Decided 2026-11-25: Vuetify 4** (4.3.x), since 3.x has stopped at 3.9.7. This replaces "Vuetify 3" in platform-core.md section 2, DESIGN.md and TECHNICAL.md.
 
 ## Approval
-Approved by @Bankole2000 on 2026-11-25, revision 1.0, to start building. Approved as drafted without an item-by-item review; sections are revisited when the milestone that needs them is planned, and open TBDs stay open decisions. Revision 1.1 adds project components (PRD OD-007), approved as drafted by @Bankole2000 on 2026-11-25. Revision 1.2 records the Vuetify 4 decision (OD-008); its review is pending. Revision 1.3 links every requirement to the approved features in FEATURES.md (reviewed 2026-11-26) and adds FR-043 to FR-049 for the gap features FT-052 to FT-063; it is in review.
+Approved by @Bankole2000 on 2026-11-25, revision 1.0, to start building. Approved as drafted without an item-by-item review; sections are revisited when the milestone that needs them is planned, and open TBDs stay open decisions. Revision 1.1 adds project components (PRD OD-007), approved as drafted by @Bankole2000 on 2026-11-25. Revision 1.2 records the Vuetify 4 decision (OD-008); its review is pending. Revision 1.3 links every requirement to the approved features in FEATURES.md (reviewed 2026-11-26) and adds FR-043 to FR-049 for the gap features FT-052 to FT-063; it is in review. Revision 1.4 applies the owner's review of 2026-11-26 (docs/reviews/2026-11-26-PRD.md, verdict Approved with changes): OBJ-001's period is configurable and OBJ-003 needs 2 apps; the feed refresh interval, the "not reporting" period and the batch limits (OD-002) are settings with defaults; the support window is 3 months. Revision 1.4 approved by @Bankole2000 on 2026-11-26 (docs/reviews/2026-11-26-PRD-2.md, verdict Approved with changes, with every requested change already applied).

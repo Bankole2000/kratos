@@ -1,6 +1,6 @@
 # Development Roadmap
 
-Status: In review | Owner: @Bankole2000 | Version: 1.5 | Last updated: 2026-11-26
+Status: In review | Owner: @Bankole2000 | Version: 1.6 | Last updated: 2026-11-26
 References: FEATURES.md, PRD.md, DESIGN.md, TECHNICAL.md, TESTING.md, platform-core.md section 7
 
 ## Milestones
@@ -41,17 +41,19 @@ Only M0 is planned in detail. Later milestones are broken down once the previous
 | TASK-016 | Features list pilot: `docs/FEATURES.md` with users, actions, resources, platforms, journeys and features drawn from the PRD | repo | — | FR-001 to FR-042 | — | M1 | None | High | #39 |
 
 ## Planning rules
-- Plan only the next useful milestone in detail; split large tasks.
+- Plan only the next useful milestone in detail; split large tasks. FEATURES.md is the whole map; tasks are created only for the next milestone's journeys.
+- Plan from approved features (FEATURES.md, status `approved`) and their requirements, never from features that are only proposed.
+- Tasks that build on a shared interface several tasks use (an api contract, a shared UI component): write the interface down in the milestone's parent issue first ("wave contract"), so the tasks can run in parallel.
 - Independent tasks run in parallel, one branch and PR each. A task may also start early on the parts that don't need an unmerged dependency (AGENTS.md, Execution rules 2).
 - Each task belongs to one app (or `packages`/`sdks`/`infra`/`repo`). A feature spanning apps becomes one task per app, ordered infrastructure → contract → servers → clients (see GITHUB.md, Multi-app work). Here that is usually api (which regenerates the contract) → packages/ui → web and app.
 - Learn Rust on the easy parts first: CRUD and reference data come before ingestion, batching and rate limiting (principle 23). Keep early api tasks small.
 - Signed builds for M5 need an Apple Developer account, a Google Play account and a Windows code-signing certificate, which can take days to weeks to obtain. Start them during M3 at the latest.
 - Set up the release workflow and each app's release environment before its first release, not during it.
 - Settle D8 (scope list) and OD-004 before planning M1, and D5 before planning M4; changing scopes later affects issued keys.
-- Map every implementation issue to requirement IDs and acceptance tests (TC IDs).
+- Map every implementation issue to feature IDs, requirement IDs and acceptance tests (TC IDs).
 - Create each table with its `component_id` column in its first migration (TECHNICAL.md, data model), even when the component features of that table come in a later milestone.
 - Record dependencies and issue URLs; GitHub is the source of truth for task status.
-- Reconcile scope changes with the approved PRD before generating new tasks.
+- Reconcile scope changes with FEATURES.md and the approved PRD before generating new tasks.
 
 ## Approval
-Approved by @Bankole2000 on 2026-11-25, revision 1.0, to start building. Approved as drafted without an item-by-item review; sections are revisited when the milestone that needs them is planned, and open TBDs stay open decisions. Revision 1.1 adds project components (PRD OD-007), approved as drafted by @Bankole2000 on 2026-11-25. Revision 1.5 makes milestones sets of journeys (Journeys column), adds PRD FR-043 to FR-049 to the exit criteria and a Features column to the work breakdown; it is in review.
+Approved by @Bankole2000 on 2026-11-25, revision 1.0, to start building. Approved as drafted without an item-by-item review; sections are revisited when the milestone that needs them is planned, and open TBDs stay open decisions. Revision 1.1 adds project components (PRD OD-007), approved as drafted by @Bankole2000 on 2026-11-25. Revision 1.6 adds the template's planning rules (approved features only, wave contracts). Revision 1.5 makes milestones sets of journeys (Journeys column), adds PRD FR-043 to FR-049 to the exit criteria and a Features column to the work breakdown; it is in review.
