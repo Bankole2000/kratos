@@ -48,6 +48,7 @@ import {
   roadmapMilestones,
   planWaves,
   uncoveredFeatures,
+  parseProjectLine,
 } from './lib/ready.mjs'
 import {
   classify,
@@ -103,8 +104,7 @@ function repo() {
 
 /** Project from docs/GITHUB.md ("- Project: <owner> #<number>"), or none (label fallback). */
 function projectConfig() {
-  const m = read('docs/GITHUB.md').match(/^- Project:\s*@?([\w.-]+)\s+#(\d+)/m)
-  return m ? { owner: m[1], number: Number(m[2]) } : null
+  return parseProjectLine(read('docs/GITHUB.md'))
 }
 
 /** A temporary file with the given text, for gh --body-file. */

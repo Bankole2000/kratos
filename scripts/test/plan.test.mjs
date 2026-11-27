@@ -12,6 +12,7 @@ import {
   planWaves,
   uncoveredFeatures,
   PLATFORM,
+  parseProjectLine,
 } from '../lib/ready.mjs'
 import { claimBranch, git, worktreePath, worktrees, mainRoot } from '../lib/claim.mjs'
 
@@ -135,4 +136,23 @@ test('claims can get their own worktree under .worktrees/', (t) => {
     worktrees(repo).map((w) => w.branch),
     [branch],
   )
+})
+
+test('the Project line in docs/GITHUB.md, however it is written', () => {
+  const p = (line, repo = '- Repository: acme/shop\n') =>
+    JSON.stringify(parseProjectLine(`${repo}${line}\n`))
+  assert.equal(p('- Project: octocat #3'), '{"owner":"octocat","number":3}')
+  assert.equal(p('- Project: @octocat #3'), '{"owner":"octocat","number":3}')
+  assert.equal(
+    p('- Project: #3 "Kratos" (owned by @Bankole2000), with the fields below'),
+    '{"owner":"Bankole2000","number":3}',
+  )
+  assert.equal(
+    p('- Project: Bankole2000 #5, with the fields below'),
+    '{"owner":"Bankole2000","number":5}',
+  )
+  assert.equal(p('- Project: 7'), '{"owner":"acme","number":7}')
+  assert.equal(p('- Project: none yet; states are kept in labels'), 'null')
+  assert.equal(p(`- Project: ${'{'.repeat(2)}owner, project number or ID${'}'.repeat(2)}`), 'null') // an unfilled placeholder
+  assert.equal(p('- Project: TBD'), 'null')
 })

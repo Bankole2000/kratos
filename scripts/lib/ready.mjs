@@ -335,3 +335,22 @@ export function uncoveredFeatures(journey, bodies, index, deferred = {}) {
   const features = index.journeys.get(journey)?.features ?? []
   return features.filter((f) => index.ft.get(f) === 'approved' && !named.has(f) && !deferred[f])
 }
+
+// ---------- configuration ----------
+
+/**
+ * The Project from docs/GITHUB.md's "- Project:" line, in any of the forms people write:
+ * "octocat #3", "#3 "Name" (owned by @octocat)", "3" (owner from "- Repository: owner/repo").
+ * "none", "TBD" or an unfilled placeholder mean no Project (the label fallback).
+ */
+export function parseProjectLine(text) {
+  const line = (text ?? '').match(/^- Project:\s*(.*)$/m)?.[1] ?? ''
+  if (!line || /\{\{|^(none|tbd|n\/a)\b/i.test(line.trim())) return null
+  const num = line.match(/#(\d+)\b/)?.[1] ?? line.match(/^\s*(\d+)\b/)?.[1]
+  if (!num) return null
+  const owner =
+    line.match(/@?([\w.-]+)\s+#\d+\b/)?.[1] ??
+    line.match(/owned by\s+@?([\w.-]+)/i)?.[1] ??
+    (text.match(/^- Repository:\s*@?([\w.-]+)\//m) ?? [])[1]
+  return owner ? { owner, number: Number(num) } : null
+}
