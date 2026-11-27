@@ -20,7 +20,7 @@ matches=$(grep -rnIE '(^|[^$])\{\{' . \
   --exclude-dir=dist --exclude-dir=build --exclude-dir=coverage --exclude-dir=target \
   --exclude-dir=.next --exclude-dir=.nuxt --exclude-dir=.output --exclude-dir=.svelte-kit \
   --exclude-dir=.dart_tool --exclude-dir=.gradle --exclude-dir=Pods --exclude-dir=gen \
-  --exclude-dir=reviews --exclude-dir=templates --exclude-dir=bruno \
+  --exclude-dir=reviews --exclude-dir=.worktrees --exclude-dir=templates --exclude-dir=bruno \
   --exclude='*.vue' --exclude='*.svelte' --exclude='*.hbs' --exclude='*.handlebars' \
   --exclude='*.mustache' --exclude='*.njk' --exclude='*.liquid' --exclude='*.jinja' --exclude='*.j2' \
   --exclude=check-placeholders.sh --exclude=bruno-check.mjs \

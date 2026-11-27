@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+# Wrapper for scripts/agent.mjs (see its header for the commands).
+exec node "$(dirname "$0")/agent.mjs" "$@"

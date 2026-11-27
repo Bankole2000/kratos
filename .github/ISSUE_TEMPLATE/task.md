@@ -5,7 +5,7 @@ title: "[Task] "
 labels: ""
 ---
 ## Task key, feature, requirement and test IDs
-<!-- TASK-___ / FT-___ / FR-___ / TC-___ -->
+<!-- TASK-___ / FT-___ / FR-___ / TC-___. The features set the task's journey (docs/FEATURES.md). Repo or infra work with no feature: TASK-___ / Platform -->
 
 ## App
 <!-- The one app this task changes (web, api, mobile, packages, repo). Work spanning apps is split into one task per app under a parent issue. -->

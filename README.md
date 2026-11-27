@@ -63,6 +63,7 @@ App, package and infra folders are created by M0 tasks, not shipped empty. The w
 
 ## Conventions
 - **Features:** `docs/FEATURES.md` lists what the product lets each user do, and feeds the PRD. `node scripts/check-features.mjs` checks its references, the PRD's links to it and the milestones (ROADMAP.md lists the journeys each one delivers); `--write` regenerates its generated parts. CI runs it.
+- **Agent workflow:** `scripts/agent help` lists the commands (docs/GITHUB.md, Agent workflow). Run agents with `scripts/agent swarm --workers 2 --reviewers 1 --wait 120`; `scripts/agent digest` shows what needs you; `node --test scripts/test/` tests the scripts.
 - **Placeholders:** text wrapped in double curly braces marks something to fill in. Run `bash scripts/check-placeholders.sh` to list any that remain (`templates/` and `docs/reviews/` are skipped). Write `TBD` for genuine unknowns; TBD is never an approved decision.
 - **Document status:** every document in `docs/` has a header with Status, Owner, Version and Last updated. Status moves Draft → In review → Approved → Superseded. Material changes to an Approved document return it to In review and bump the version.
 - **IDs:** requirement and artifact IDs (`OBJ-`, `FR-`, `NFR-`, `BR-`, `FLOW-`, `UI-`, `API-`, `ADR-`, `TC-`, `TASK-`) are stable. Never renumber or reuse an ID; mark removed items as deprecated instead.

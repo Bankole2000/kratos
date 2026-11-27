@@ -1,0 +1,47 @@
+# Decides whether a pull request may merge without a human (docs/GITHUB.md, "Merging").
+# The decision is the "risk-gate" commit status on the PR's head commit (not this job's
+# check, which only fails on errors). Once it has run on a pull request, make it required:
+#   bash scripts/setup-github.sh --required-check ci-ok,risk-gate
+#
+# Labels added with a person's token (scripts/agent review adds agent:reviewed) re-run it;
+# labels the workflow adds with its own token don't, so it can't loop.
+#
+# pull_request_target runs this workflow and scripts/lib/risk-gate.mjs from the default
+# branch, with a token that can label the PR. It must never check out or run the pull
+# request's code: it only reads the list of changed files, contract files and reviews
+# through the API.
+name: risk-gate
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, ready_for_review, labeled, unlabeled]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  statuses: write
+
+concurrency:
+  group: risk-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  evaluate:
+    name: risk gate (evaluate)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # The default branch (pull_request_target's default ref), not the PR head.
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            scripts/lib
+            .github/risk-rules.json
+          sparse-checkout-cone-mode: false
+      - uses: actions/github-script@v9
+        with:
+          script: |
+            const { run } = await import(`${process.env.GITHUB_WORKSPACE}/scripts/lib/risk-gate.mjs`);
+            await run({ github, context, core, rulesPath: `${process.env.GITHUB_WORKSPACE}/.github/risk-rules.json` });
