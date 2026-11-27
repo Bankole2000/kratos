@@ -6,7 +6,7 @@
 # Usual use:
 #   bash scripts/setup-github.sh --all --apps web,api --project 5 --approvals 0 --dry-run
 #   bash scripts/setup-github.sh --all --apps web,api --project 5 --approvals 0
-#   bash scripts/setup-github.sh --required-check ci-ok      # once CI runs on pull requests
+#   bash scripts/setup-github.sh --required-check ci-ok,risk-gate   # once both have run on a PR
 #
 # Steps (with none given, labels and milestones run):
 #   --all                 Every step below except --required-check
@@ -17,17 +17,21 @@
 #                         hold placeholders are skipped; descriptions are kept in step)
 #   --ruleset             "main-guard" ruleset on the default branch: no deletion, no
 #                         force-push, pull requests with --approvals approvals
+#   --repo-settings       Repository settings the agent workflow relies on: allow
+#                         auto-merge, delete head branches after merge (docs/GITHUB.md)
 #   --remove-default-labels  Delete GitHub's default labels (bug, enhancement, …) that no
 #                         issue or pull request uses; the type:* labels replace them
-#   --required-check NAME Also require this status check (implies --ruleset). Add it only
-#                         once CI runs on pull requests, or every PR waits forever.
+#   --required-check A,B  Also require these status checks, comma-separated (implies
+#                         --ruleset). Add each only once it has run on a pull request, or
+#                         every PR waits forever.
 # Options:
 #   --repo owner/name     Default: this folder's GitHub repository
 #   --apps a,b            One app:<name> label per app (default: the folders in apps/)
 #   --approvals N         Required approvals: 0 for a solo owner, 1 or more for a team
 #                         (default: keep the ruleset's current count, or 1 for a new one)
 #   --project N           Use GitHub Project N: link the repository to it and create its
-#                         custom fields
+#                         custom fields, including Journey (the journeys in docs/FEATURES.md
+#                         plus Platform)
 #   --project-from N      Copy Project N (a template Project with the fields, Status options
 #                         and views already set up) as a new Project for this repository,
 #                         then use it as --project
@@ -42,7 +46,7 @@ cd "$(dirname "$0")/.."
 usage() { awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0"; }
 
 REPO="" PROJECT="" PROJECT_FROM="" APPS="" APPROVALS="" REQUIRED_CHECK="" DRY=""
-DO_LABELS="" DO_MILESTONES="" DO_RULESET="" DO_REMOVE_DEFAULTS="" ANY_STEP=""
+DO_LABELS="" DO_MILESTONES="" DO_RULESET="" DO_REMOVE_DEFAULTS="" DO_REPO_SETTINGS="" ANY_STEP=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --repo) REPO="$2"; shift 2 ;;
@@ -51,7 +55,8 @@ while [ $# -gt 0 ]; do
     --project) PROJECT="$2"; shift 2 ;;
     --project-from) PROJECT_FROM="$2"; shift 2 ;;
     --dry-run) DRY=1; shift ;;
-    --all) DO_LABELS=1; DO_MILESTONES=1; DO_RULESET=1; DO_REMOVE_DEFAULTS=1; ANY_STEP=1; shift ;;
+    --all) DO_LABELS=1; DO_MILESTONES=1; DO_RULESET=1; DO_REMOVE_DEFAULTS=1; DO_REPO_SETTINGS=1; ANY_STEP=1; shift ;;
+    --repo-settings) DO_REPO_SETTINGS=1; ANY_STEP=1; shift ;;
     --labels) DO_LABELS=1; ANY_STEP=1; shift ;;
     --milestones) DO_MILESTONES=1; ANY_STEP=1; shift ;;
     --ruleset) DO_RULESET=1; ANY_STEP=1; shift ;;
@@ -116,9 +121,22 @@ REPO_INFO=$(gh_retry api "repos/$REPO" --jq '"\(.permissions.admin) \(.default_b
   echo "Can't read $REPO. Check the name and your access." >&2; exit 1; }
 IS_ADMIN="${REPO_INFO%% *}"
 BRANCH="${REPO_INFO#* }"
-if [ -n "$DO_RULESET" ] && [ "$IS_ADMIN" != "true" ]; then
-  echo "The ruleset needs admin rights on $REPO, which this login doesn't have." >&2; exit 1
+if [ -n "$DO_RULESET$DO_REPO_SETTINGS" ] && [ "$IS_ADMIN" != "true" ]; then
+  echo "The ruleset and repository settings need admin rights on $REPO, which this login doesn't have." >&2; exit 1
 fi
+if [ -n "$REQUIRED_CHECK" ]; then
+  IFS=',' read -ra CHECKS <<< "$REQUIRED_CHECK"
+  for c in "${CHECKS[@]}"; do
+    [[ "$c" =~ ^[A-Za-z0-9_.:/\ -]+$ ]] || { echo "Invalid check name: '$c'" >&2; exit 2; }
+  done
+fi
+
+# Journeys from docs/FEATURES.md (J-01, …), for the Journey field or journey:* labels.
+JOURNEY_IDS=""
+[ -f docs/FEATURES.md ] && JOURNEY_IDS=$(awk -F'|' '
+  /^## /{ inside = ($0 ~ /^## Journeys/); next }
+  inside && /^\| J-[0-9]+ / { id = $2; gsub(/^[ \t]+|[ \t]+$/, "", id); print id }
+' docs/FEATURES.md | paste -sd, -)
 echo "Repository: $REPO (default branch $BRANCH)${DRY:+ — dry run, nothing will change}"
 
 # --- Project: copy a template Project if asked, then link the repository ---
@@ -200,6 +218,11 @@ if [ -n "$DO_LABELS" ]; then
     "review:medical|d93f0b|Medical review required"
     "review:financial|d93f0b|Financial review required"
     "impact:breaking|b60205|Compatibility impact"
+    "risk:high|b60205|Set by the risk gate: a human approves the merge"
+    "risk:medium|fbca04|Set by the risk gate: may merge after an independent agent review"
+    "risk:low|0e8a16|Set by the risk gate: may merge after an agent review"
+    "human:merge-ok|0e8a16|Only a human adds this: approves merging the head commit"
+    "agent:reviewed|c5def5|An agent reviewed the head commit (re-runs the risk gate)"
   )
   [ ${#APP_LABELS[@]} -gt 0 ] && LABELS+=("${APP_LABELS[@]}")
   # Without a Project, workflow state lives in labels (docs/GITHUB.md, "Without a Project").
@@ -212,7 +235,10 @@ if [ -n "$DO_LABELS" ]; then
       "human:approved|0e8a16|A human approved this issue for work"
       "human:changes-requested|d93f0b|A human asked for changes"
       "ai:ready|c5def5|Specified well enough for an agent to start"
+      "journey:Platform|bfdadc|Work outside any journey (setup, chores, cross-cutting)"
     )
+    IFS=',' read -ra JIDS <<< "$JOURNEY_IDS"
+    for j in ${JIDS[@]+"${JIDS[@]}"}; do LABELS+=("journey:$j|bfdadc|Part of journey $j (docs/FEATURES.md)"); done
   fi
   EXISTING=$(gh_retry label list --repo "$REPO" --limit 500 --json name,color,description --jq '.[] | "\(.name)|\(.color)|\(.description)"')
   for entry in "${LABELS[@]}"; do
@@ -296,6 +322,12 @@ if [ -n "$DO_MILESTONES" ]; then
       SKIPPED+=("milestone $title")
     fi
   done <<< "$MS_ROWS"
+  # Milestones on GitHub that ROADMAP.md no longer lists (renamed or removed there).
+  while IFS=$'\t' read -r num title _; do
+    [ -n "$title" ] || continue
+    cut -f1 <<< "$MS_ROWS" | grep -qxF "$title" && continue
+    MANUAL+=("Milestone \"$title\" (#$num) isn't in docs/ROADMAP.md: move its issues to the right milestone, then close or delete it")
+  done <<< "$HAVE_MS"
 fi
 
 # --- Project fields ---
@@ -305,6 +337,7 @@ if [ -n "$PROJECT$PROJECT_FROM" ]; then
     "Complexity|Small,Medium,Large"
     "Human Review|Required,Approved,Changes Requested"
     "AI Ready|No,Yes"
+    "Journey|${JOURNEY_IDS:+$JOURNEY_IDS,}Platform"
   )
   if [ "$PROJECT" = "(new)" ]; then
     SKIPPED+=("Project fields: checked after the copy is made (a copy keeps the template Project's fields)")
@@ -313,12 +346,29 @@ if [ -n "$PROJECT$PROJECT_FROM" ]; then
     for entry in "${FIELDS[@]}"; do
       IFS='|' read -r name options <<< "$entry"
       if grep -qxF "$name" <<< "$HAVE_FIELDS"; then
-        SKIPPED+=("Project field $name (exists; check its options are: $options)")
+        HAVE_OPTS=$(gh_retry project field-list "$PROJECT" --owner "$OWNER" --format json --jq ".fields[] | select(.name == \"$name\") | .options[].name")
+        MISSING_OPTS=()
+        IFS=',' read -ra WANT_OPTS <<< "$options"
+        for o in "${WANT_OPTS[@]}"; do grep -qxF "$o" <<< "$HAVE_OPTS" || MISSING_OPTS+=("$o"); done
+        if [ ${#MISSING_OPTS[@]} -gt 0 ]; then
+          # Replacing a field's options through the API clears them on existing items.
+          MANUAL+=("Project #$PROJECT: add the option(s) ${MISSING_OPTS[*]} to the $name field (Project settings → $name)")
+        else
+          SKIPPED+=("Project field $name")
+        fi
       else
         change project field-create "$PROJECT" --owner "$OWNER" --name "$name" --data-type SINGLE_SELECT --single-select-options "$options"
         CREATED+=("Project field $name")
       fi
     done
+    # Approval: a text field scripts/agent writes ("<journey> <hash> <by>"), so checking
+    # approvals takes one query instead of reading every issue's comments.
+    if grep -qxF "Approval" <<< "$HAVE_FIELDS"; then
+      SKIPPED+=("Project field Approval")
+    else
+      change project field-create "$PROJECT" --owner "$OWNER" --name "Approval" --data-type TEXT
+      CREATED+=("Project field Approval")
+    fi
     # Status needs Todo, In Progress, In Review, Blocked and Done (docs/GITHUB.md). The API
     # replaces the whole option list, which would clear the Status of existing items, so
     # missing options are added only while the Project has no items.
@@ -359,7 +409,9 @@ if [ -n "$DO_RULESET" ]; then
   [ -z "$ID" ] || BYPASS=$(gh_retry api "repos/$REPO/rulesets/$ID" --jq '.bypass_actors // [] | tojson')
   CHECK_RULE=""
   if [ -n "$REQUIRED_CHECK" ]; then
-    CHECK_RULE=$(printf ',{"type":"required_status_checks","parameters":{"strict_required_status_checks_policy":false,"required_status_checks":[{"context":"%s"}]}}' "$REQUIRED_CHECK")
+    CONTEXTS=""
+    for c in "${CHECKS[@]}"; do CONTEXTS="${CONTEXTS:+$CONTEXTS,}{\"context\":\"$c\"}"; done
+    CHECK_RULE=$(printf ',{"type":"required_status_checks","parameters":{"strict_required_status_checks_policy":false,"required_status_checks":[%s]}}' "$CONTEXTS")
   fi
   BODY=$(printf '{"name":"main-guard","target":"branch","enforcement":"active","bypass_actors":%s,"conditions":{"ref_name":{"include":["refs/heads/%s"],"exclude":[]}},"rules":[{"type":"deletion"},{"type":"non_fast_forward"},{"type":"pull_request","parameters":{"required_approving_review_count":%s,"dismiss_stale_reviews_on_push":false,"require_code_owner_review":false,"require_last_push_approval":false,"required_review_thread_resolution":false}}%s]}' "$BYPASS" "$BRANCH" "$APPROVALS" "$CHECK_RULE")
   WHAT="ruleset main-guard on $BRANCH ($APPROVALS approvals${REQUIRED_CHECK:+, requires $REQUIRED_CHECK})"
@@ -370,7 +422,22 @@ if [ -n "$DO_RULESET" ]; then
     [ -n "$DRY" ] || gh_retry api -X POST "repos/$REPO/rulesets" --input - <<< "$BODY" >/dev/null
     CREATED+=("$WHAT")
   fi
-  [ -n "$REQUIRED_CHECK" ] || MANUAL+=("Once CI runs on pull requests: bash scripts/setup-github.sh --required-check ci-ok")
+  [ -n "$REQUIRED_CHECK" ] || MANUAL+=("Once CI and the risk gate have run on a pull request: bash scripts/setup-github.sh --required-check ci-ok,risk-gate")
+fi
+
+# --- Repository settings: auto-merge allowed, head branches deleted after merge ---
+if [ -n "$DO_REPO_SETTINGS" ]; then
+  HAVE_SETTINGS=$(gh_retry api "repos/$REPO" --jq '"\(.allow_auto_merge) \(.delete_branch_on_merge)"')
+  if [ "$HAVE_SETTINGS" = "true true" ]; then
+    SKIPPED+=("repository settings (auto-merge allowed, head branches deleted)")
+  else
+    change repo edit "$REPO" --enable-auto-merge --delete-branch-on-merge
+    UPDATED+=("repository settings: allow auto-merge, delete head branches after merge")
+  fi
+fi
+if [ -n "$PROJECT$PROJECT_FROM" ]; then
+  MANUAL+=("Project #${PROJECT}: turn on the built-in workflows (Auto-add to project with is:pr is:open, Item closed → Done, Pull request merged → Done, Item added → Todo) in Project → Workflows")
+  MANUAL+=("Project #${PROJECT}: add the \"Needs me\" and \"Awaiting approval\" views (docs/GITHUB.md, \"Needs me\" view)")
 fi
 
 MANUAL+=("Project \"New issue default\" values (docs/GITHUB.md) aren't enforced by GitHub; agents set them when creating issues")

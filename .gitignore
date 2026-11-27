@@ -90,3 +90,6 @@ target/
 
 # Dart (sdks/dart)
 .dart_tool/
+
+# Task and review worktrees made by scripts/agent (docs/GITHUB.md, Agent workflow)
+.worktrees/

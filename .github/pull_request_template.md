@@ -4,6 +4,9 @@
 ## Related issue
 <!-- Link the issue. Use "Closes #N" only if this PR fully resolves it. -->
 
+## Risk
+<!-- `scripts/agent risk` output: low, medium or high with its reasons. Low and medium merge after an agent review (medium: by a different session); high needs the owner. The risk-gate check has the final word. -->
+
 ## Apps affected
 <!-- e.g. web; or packages/api-contract (used by web, mobile); or infra. Normally one app per PR. -->
 

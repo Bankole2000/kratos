@@ -25,3 +25,9 @@
 /docs/ @Bankole2000
 /AGENTS.md @Bankole2000
 /.github/ @Bankole2000
+
+# Agent workflow and its guard rails: changes here change what agents may do
+/.claude/ @Bankole2000
+/scripts/ @Bankole2000
+/.github/risk-rules.json @Bankole2000
+/.github/workflows/risk-gate.yml @Bankole2000

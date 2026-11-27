@@ -1,0 +1,75 @@
+{
+  "$comment": "Read by the risk-gate workflow and `scripts/agent` (docs/GITHUB.md, Merging and the risk gate). A PR is HIGH risk if a changed file matches high.paths, a path under keywordScope has a high.keywords segment, a migration changes an existing file or has destructive SQL, a contract has a breaking change, or it has a high.labels label: it merges only with human:merge-ok or a human merge. MEDIUM risk (medium.paths, medium.keywords, new additive migrations, additive contract changes) merges after an approving review by a different agent session than the author's. Everything else is LOW risk and merges after any approving agent review. autoMerge: scripts/agent pr turns on auto-merge, but only once the default branch requires every check in requiredChecks. Changes to this file are themselves high risk.",
+  "high": {
+    "paths": [
+      "infra/**",
+      ".github/**",
+      ".claude/**",
+      ".codex/**",
+      "scripts/**",
+      "AGENTS.md",
+      "**/AGENTS.md",
+      "CLAUDE.md",
+      "**/CLAUDE.md",
+      "docs/*.md"
+    ],
+    "keywords": [
+      "payment",
+      "payments",
+      "payout",
+      "payouts",
+      "refund",
+      "refunds",
+      "wallet",
+      "wallets",
+      "billing",
+      "secret",
+      "secrets"
+    ],
+    "labels": ["review:*", "impact:breaking", "risk:high-override"]
+  },
+  "medium": {
+    "paths": [
+      "packages/**",
+      "sdks/**",
+      "Cargo.toml",
+      "**/Cargo.toml",
+      "Cargo.lock",
+      "rust-toolchain.toml",
+      "**/package.json",
+      "package-lock.json",
+      "pnpm-lock.yaml",
+      "pnpm-workspace.yaml",
+      "**/.env.example",
+      "docker-compose.yml"
+    ],
+    "keywords": [
+      "auth",
+      "session",
+      "sessions",
+      "permission",
+      "permissions",
+      "role",
+      "roles",
+      "password",
+      "passwords",
+      "token",
+      "tokens"
+    ]
+  },
+  "keywordScope": ["apps/**"],
+  "migrationFiles": ["**/migrations/**"],
+  "destructiveSql": "\\b(DROP|TRUNCATE|RENAME)\\b|\\bDELETE\\s+FROM\\b|\\bUPDATE\\s+\\S+\\s+SET\\b|\\bALTER\\s+COLUMN\\b|\\bSET\\s+NOT\\s+NULL\\b",
+  "contractFiles": ["openapi/openapi.json"],
+  "statusContext": "risk-gate",
+  "requiredChecks": ["ci-ok", "risk-gate"],
+  "autoMerge": true,
+  "humanOkLabel": "human:merge-ok",
+  "agentReviewLabel": "agent:reviewed",
+  "riskLabels": { "high": "risk:high", "medium": "risk:medium", "low": "risk:low" },
+  "approval": {
+    "$comment": "Approved documents approve scope: while every file in documents has Status Approved, scripts/agent approves a task that uses only approved features of one journey, in the milestone ROADMAP.md gives that journey, passes the definition-of-ready check and whose journey plan has no open questions. Platform work and anything else still needs scripts/agent approve-journey.",
+    "fromApprovedDocs": true,
+    "documents": ["docs/FEATURES.md", "docs/ROADMAP.md"]
+  }
+}

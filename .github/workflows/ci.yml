@@ -125,6 +125,8 @@ jobs:
         run: pnpm exec prettier --check .
       - name: Features (FEATURES.md references, PRD links, milestones, generated parts)
         run: node scripts/check-features.mjs
+      - name: Agent workflow scripts
+        run: node --test scripts/test/*.test.mjs
 
   api:
     needs: changes
