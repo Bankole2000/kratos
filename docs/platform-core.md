@@ -3,7 +3,7 @@
 > The shared foundation for every app in the portfolio: one Rust server, one API, SDKs for each language.
 > Formerly **Portfolio Manager** + **Common Resource Server**, merged into one project. Code named kratos.
 
-Status: Planning · Last updated: 25 November 2026
+Status: Planning · Last updated: 28 November 2026
 
 ---
 
@@ -64,10 +64,10 @@ These apply to every decision during the build. When in doubt, come back here.
 
 ### Security
 10. **Clients hold no secrets.** Anything shipped in a browser, Tauri or mobile app can be extracted. Those apps only ever get a **publishable key**.
-11. **Keys carry a list of scopes, not a fixed type.** Scopes such as `events:write`, `reference:read`, `projects:read`, `projects:write`, `costs:read`, `costs:write`. Common sets get presets:
+11. **Keys carry a list of scopes, not a fixed type.** The scopes are `projects:read`, `projects:write`, `links:write`, `metrics:read`, `audit:read`, `costs:read`, `costs:write`, `events:write` and `reference:read` (D8; PRD BR-011). Common sets get presets:
     - **Secret** (`pc_sk_…`): server-side only, all scopes for its project.
     - **Publishable** (`pc_pk_…`): safe in client apps; `events:write` + `reference:read` only.
-    - **Agent**: chosen scopes for an AI agent, read-only by default.
+    - **Agent** (`pc_ak_…`): for an AI agent, read-only by default (`projects:read`, `metrics:read`, `costs:read`, `reference:read`).
 12. **Two kinds of credential.** *Project keys* belong to one project and environment. *Personal access tokens* (`pc_pat_…`) belong to a user and can reach all of that user's projects, within their scopes. Both are stored hashed (SHA-256), shown once at creation, revocable, and optionally expire.
 13. **Rate limits per key**, so one misbehaving app can't take Platform Core down for the others.
 14. **Never log secrets or personal data, but always record who made a change.** Keys are logged by prefix only. Each write stores the key, token or admin session behind it, so any change can be traced, including changes made by AI agents.
@@ -279,5 +279,5 @@ After launch, v2 begins with the Rust SDK (F11) and then the local MCP server (F
 | D4 | How much of `apps/web` is public (SEO) vs dashboard behind login? | Decides how many pages need SSR. |
 | D5 | Display currency for cost totals, and source for exchange rates. | NGN, USD, or a setting. |
 | D6 | Package names on npm, pub.dev, crates.io and PyPI. | Check availability early. |
-| D7 | Default expiry for personal access tokens and agent keys (e.g. 90 days, or none). | Shorter is safer for agents. |
-| D8 | Final scope list and naming (e.g. `projects:write` vs finer scopes like `links:write`). | Settle before M1; changing scopes later affects issued keys. |
+| D7 | Default expiry for personal access tokens and agent keys (e.g. 90 days, or none). | **Decided 2026-11-28: settings** `PAT_DEFAULT_EXPIRY_DAYS` and `AGENT_KEY_DEFAULT_EXPIRY_DAYS`, both default 90 (`0` = no expiry). Secret and publishable keys have no default expiry, since publishable keys ship in released app builds. A default only fills in the expiry when a credential is created; it can be changed then or later (FR-045). |
+| D8 | Final scope list and naming (e.g. `projects:write` vs finer scopes like `links:write`). | **Decided 2026-11-28:** nine scopes, with metrics, the audit trail and link writes split out of the project scopes (PRD BR-011). Presets are expanded when a key is created. |
